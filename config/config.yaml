@@ -1,0 +1,204 @@
+env: dev
+with_profiling: true
+profiles:
+  cpu: cpu.prof
+  mem: mem.prof
+
+server:
+  port: 8080
+  host: localhost
+  api:
+    spec: openapi.json
+    swagger: swagger/
+  cors:
+    allowed_origins:
+      - http://localhost:3000
+      - "*"
+    allowed_methods: [GET, POST, PATCH, DELETE, OPTIONS, PUT]
+    allowed_headers:
+      [
+        Content-Type,
+        Authorization,
+        X-Requested-With,
+        Accept,
+        Origin,
+        Cache-Control,
+        X-File-Name,
+      ]
+    expose_headers: [Content-Length, Content-Range, X-Total-Count]
+    max_age: 86400
+    allow_credentials: true
+  tls:
+    enabled: false
+    cert: ../../ssl/cert.pem
+    key: ../../ssl/key.pem
+    ca: ../../ssl/csr.pem
+    server_name: localhost
+    skip_verify: false
+  file_upload:
+    enabled: true
+    upload_dir: /tmp/skillzcollab/uploads
+    max_file_size: 5242880
+    max_files: 10
+    allowed_types: [image/png, image/jpg, image/jpeg, image/svg+xml]
+    chunk_size: 1048576
+    cors:
+      allowed_origins:
+        - http://localhost:3000
+        - "*"
+      allowed_methods: [GET, POST, PATCH, DELETE, OPTIONS, PUT]
+      allowed_headers:
+        [
+          Content-Type,
+          Authorization,
+          X-Requested-With,
+          Accept,
+          Origin,
+          Cache-Control,
+          X-File-Name,
+        ]
+      expose_headers: [Content-Length, Content-Range, X-Total-Count]
+      max_age: 86400
+      allow_credentials: true
+
+storage:
+  database:
+    url: mysql://root:root@localhost:3306/skillzcollab
+    tls:
+      enabled: false
+      cert: ../../ssl/cert.pem
+      key: ../../ssl/key.pem
+      ca: ../../ssl/csr.pem
+      server_name: localhost
+      skip_verify: false
+
+  object_storage:
+    endpoint: https://s3-%s.amazonaws.com
+    region: eu-west-1
+    access_key_id: AKIASQG3G3BOEO2TSYJN
+    secret_access_key: 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
+    bucket: skillz-collab
+
+auth:
+  rbac:
+    resources:
+      [
+        admin,
+        user,
+        brand,
+        brief,
+        creative,
+        portfolio,
+        reaction,
+        submission,
+        tag,
+      ]
+    actions: [write, read, update, delete]
+
+    levels:
+      root: ["*:*"] # GOD
+      global_write: ["*:write"] # Can write to EVERY resource (use with care)
+      global_read: ["*:read"] # Can read EVERY resource
+
+    action_aliases:
+      w: [write]
+      r: [read]
+      u: [update]
+      d: [delete]
+      wrud: [write, read, update, delete]
+
+    permission_sets:
+      content_author:
+        - "brief:wrud"
+        - "creative:wrud"
+        - "portfolio:wrud"
+        - "reaction:wrud"
+        - "submission:wrud"
+        - "tag:wrud"
+
+      admin:
+        - "brand:wrud"
+        - "user:wrud"
+
+      user:
+        - "user:wrud"
+        - "brand:r"
+
+    roles:
+      super_admin:
+        name: Super Admin
+        permissions: [root]
+      admin:
+        name: Admin
+        inherits: [user]
+        permissions: [admin]
+      user:
+        name: User
+        permissions: [user, content_author]
+      auditor:
+        name: Auditor
+        permissions: [global_read]
+
+  attribute_policies:
+    is_owner_for_modification:
+      description: "Users can only update or delete content they own."
+      target:
+        - "group:content:update"
+        - "group:content:delete"
+      rules:
+        - condition: "subject.id equals resource.ownerId"
+
+    prevent_deleting_published_briefs:
+      description: "Content cannot be deleted if it is already published."
+      target:
+        - "content:delete"
+      rules:
+        - condition: "resource.created_at is after 0000-01-01"
+
+    restrict_admin_actions_to_business_hours:
+      description: "Standard admin actions can only be performed during India business hours."
+      target:
+        - "permission_set:standard_admin"
+      rules:
+        - condition: "environment.hour_of_day greater_than_or_equals 9"
+        - condition: "environment.hour_of_day less_than 18"
+
+  jwt:
+    type: Bearer
+    prefix: Bearer
+    header: Authorization
+    cookie: Authorization
+    cookie_secure: false
+    cookie_http_only: true
+    cookie_same_site: Lax
+    access_token_validity: 1h
+    not_before_validity: 1m
+    refresh_token_validity: 1h
+    issuer: https://skillzcollab.com
+    audience: https://skillzcollab.com
+    algorithm: HS256
+    signing_key: your-secret-key-here # TODO: Remove this
+    verification_key: your-secret-key-here # TODO: Remove this
+    verification_key_file: ../../ssl/cert.pem # TODO: Remove this
+    verification_key_file_password: your-secret-key-here # TODO: Remove this
+  basic_auth:
+    enabled: false
+  oauth:
+    server_token_endpoint_url:
+      auth_url: https://accounts.google.com/o/oauth2/auth
+      token_url: https://oauth2.googleapis.com/token
+      device_auth_url: https://oauth2.googleapis.com/device/code
+    client_id: 412636201034-s4porsarek2cijevrb58un9qbmt7u5e3.apps.googleusercontent.com
+    secret: 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
+    redirect_url: http://localhost:8080/api/v1/auth/callback
+    userinfo_url: https://www.googleapis.com/oauth2/v3/userinfo
+    scopes:
+      [
+        https://www.googleapis.com/auth/userinfo.email,
+        https://www.googleapis.com/auth/userinfo.profile,
+      ]
+
+logging:
+  level: debug
+  format: json
+  output_path: logs/app.log
