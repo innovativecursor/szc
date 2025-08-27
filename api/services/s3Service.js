@@ -184,16 +184,37 @@ const deleteFileFromS3 = async (fileUrl) => {
 // Validate file type
 const validateFileType = (mimetype) => {
   const allowedTypes = [
+    // Images
     "image/png",
     "image/jpg",
     "image/jpeg",
     "image/svg+xml",
+    "image/webp",
+    "image/tiff",
+    "image/bmp",
+    "image/gif",
+    // Videos
+    "video/mp4",
+    "video/avi",
+    "video/mov",
+    "video/wmv",
+    "video/flv",
+    "video/webm",
+    "video/mkv",
+    // Documents
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ];
   return allowedTypes.includes(mimetype);
 };
 
-// Validate file size (default 5MB)
-const validateFileSize = (size, maxSize = 5242880) => {
+// Validate file size (default 10MB for submissions)
+const validateFileSize = (size, maxSize = 10485760) => {
   return size <= maxSize;
 };
 

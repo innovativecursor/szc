@@ -3,16 +3,20 @@ const Brand = require("./Brand");
 const Brief = require("./Brief");
 const Tag = require("./Tag");
 const Submission = require("./Submission");
-const Reaction = require("./Reaction");
 const Portfolio = require("./Portfolio");
 const Creative = require("./Creative");
+
+// Get the sequelize instance
+const sequelize = require("../config/database");
+
+// Instantiate the Reaction model (it's defined as a function)
+const Reaction = require("./Reaction")(sequelize);
 
 // Define associations
 const defineAssociations = () => {
   // User associations
-  User.hasOne(Brand, { foreignKey: "userId", as: "brandProfile" });
   User.hasMany(Portfolio, { foreignKey: "userId", as: "portfolios" });
-  User.hasMany(Submission, { foreignKey: "creativeId", as: "submissions" });
+  User.hasMany(Submission, { foreignKey: "userId", as: "submissions" });
   User.hasMany(Reaction, { foreignKey: "userId", as: "reactions" });
   // Removed User.hasMany(Tag) association since creatorId field was removed
 
@@ -26,7 +30,7 @@ const defineAssociations = () => {
 
   // Submission associations
   Submission.belongsTo(Brief, { foreignKey: "briefId", as: "brief" });
-  Submission.belongsTo(User, { foreignKey: "creativeId", as: "creative" });
+  Submission.belongsTo(User, { foreignKey: "userId", as: "user" });
   Submission.belongsTo(Submission, {
     foreignKey: "parentSubmissionId",
     as: "parentSubmission",
@@ -43,12 +47,10 @@ const defineAssociations = () => {
     foreignKey: "submissionId",
     as: "submission",
   });
-  Reaction.belongsTo(Portfolio, { foreignKey: "portfolioId", as: "portfolio" });
 
   // Portfolio associations
   Portfolio.belongsTo(User, { foreignKey: "userId", as: "user" });
   Portfolio.hasMany(Creative, { foreignKey: "portfolioId", as: "creatives" });
-  Portfolio.hasMany(Reaction, { foreignKey: "portfolioId", as: "reactions" });
 
   // Creative associations
   Creative.belongsTo(Portfolio, { foreignKey: "portfolioId", as: "portfolio" });
@@ -66,5 +68,5 @@ module.exports = {
   Reaction,
   Portfolio,
   Creative,
-  sequelize: require("../config/database"),
+  sequelize,
 };

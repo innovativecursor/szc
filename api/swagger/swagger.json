@@ -712,48 +712,20 @@
       }
     },
 
-    "/submissions": {
+    "/briefs/{brief_id}/submissions": {
       "get": {
-        "tags": ["Submissions"],
-        "summary": "Get submissions",
-        "description": "Retrieve a list of submissions with optional filtering",
+        "tags": ["Briefs", "Submissions"],
+        "summary": "Get submissions by brief ID",
+        "description": "Retrieve all submissions for a specific brief",
         "parameters": [
           {
-            "name": "briefId",
-            "in": "query",
-            "description": "Filter by brief ID",
-            "required": false,
+            "name": "brief_id",
+            "in": "path",
+            "required": true,
+            "description": "Brief ID",
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
-          },
-          {
-            "name": "creativeId",
-            "in": "query",
-            "description": "Filter by creative ID",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "Filter by status",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "draft",
-                "submitted",
-                "under_review",
-                "shortlisted",
-                "selected",
-                "rejected",
-                "withdrawn"
-              ]
             }
           }
         ],
@@ -763,7 +735,30 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/paginated"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/submission"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid brief_id format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Brief not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
                 }
               }
             }
@@ -771,88 +766,15 @@
         }
       },
       "post": {
-        "tags": ["Submissions"],
-        "summary": "Create submission",
-        "description": "Create a new submission for a brief",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["brief_id", "user_id", "files"],
-                "properties": {
-                  "brief_id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "user_id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "description": {
-                    "type": "string",
-                    "maxLength": 2000
-                  },
-                  "is_finalist": {
-                    "type": "boolean",
-                    "default": false
-                  },
-                  "is_winner": {
-                    "type": "boolean",
-                    "default": false
-                  },
-                  "files": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "id",
-                        "filename",
-                        "size",
-                        "type",
-                        "url",
-                        "hash"
-                      ],
-                      "properties": {
-                        "id": { "type": "string", "format": "uuid" },
-                        "filename": { "type": "string" },
-                        "size": { "type": "number", "minimum": 0 },
-                        "type": { "type": "string" },
-                        "url": { "type": "string", "format": "uri" },
-                        "hash": { "type": "string" }
-                      }
-                    },
-                    "minItems": 1
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Submission created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/submission"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": ["Submissions"],
-        "summary": "Update submission",
-        "description": "Partially update an existing submission",
+        "tags": ["Briefs", "Submissions"],
+        "summary": "Create submission by brief ID",
+        "description": "Create a new submission for a specific brief",
         "parameters": [
           {
-            "name": "id",
+            "name": "brief_id",
             "in": "path",
             "required": true,
-            "description": "Submission ID",
+            "description": "Brief ID",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -865,16 +787,17 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["user_id", "files"],
                 "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "ID of the user submitting"
+                  },
                   "description": {
                     "type": "string",
-                    "maxLength": 2000
-                  },
-                  "is_finalist": {
-                    "type": "boolean"
-                  },
-                  "is_winner": {
-                    "type": "boolean"
+                    "maxLength": 2000,
+                    "description": "Submission description"
                   },
                   "files": {
                     "type": "array",
@@ -897,7 +820,8 @@
                         "hash": { "type": "string" }
                       }
                     },
-                    "minItems": 1
+                    "minItems": 1,
+                    "description": "Array of file objects"
                   }
                 }
               }
@@ -905,8 +829,8 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Submission partially updated successfully",
+          "201": {
+            "description": "Submission created successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -926,7 +850,187 @@
             }
           },
           "404": {
-            "description": "Submission not found",
+            "description": "Brief not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/briefs/{brief_id}/submissions/{submission_id}": {
+      "get": {
+        "tags": ["Briefs", "Submissions"],
+        "summary": "Get submission by brief ID and submission ID",
+        "description": "Retrieve a specific submission for a specific brief",
+        "parameters": [
+          {
+            "name": "brief_id",
+            "in": "path",
+            "required": true,
+            "description": "Brief ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "description": "Submission ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/submission"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Brief or submission not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Briefs", "Submissions"],
+        "summary": "Update submission by brief ID",
+        "description": "Update a specific submission for a specific brief",
+        "parameters": [
+          {
+            "name": "brief_id",
+            "in": "path",
+            "required": true,
+            "description": "Brief ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "submission_id",
+            "in": "path",
+            "required": true,
+            "description": "Submission ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "description": "Submission description"
+                  },
+                  "is_finalist": {
+                    "type": "boolean",
+                    "description": "Whether submission is a finalist"
+                  },
+                  "is_winner": {
+                    "type": "boolean",
+                    "description": "Whether submission is the winner"
+                  },
+                  "likes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of likes"
+                  },
+                  "votes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of votes"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "filename",
+                        "size",
+                        "type",
+                        "url",
+                        "hash"
+                      ],
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "filename": { "type": "string" },
+                        "size": { "type": "number", "minimum": 0 },
+                        "type": { "type": "string" },
+                        "url": { "type": "string", "format": "uri" },
+                        "hash": { "type": "string" }
+                      }
+                    },
+                    "minItems": 1,
+                    "description": "Array of file objects"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/submission"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Brief or submission not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -938,12 +1042,22 @@
         }
       },
       "delete": {
-        "tags": ["Submissions"],
-        "summary": "Delete submission",
-        "description": "Delete a submission",
+        "tags": ["Briefs", "Submissions"],
+        "summary": "Delete submission by brief ID",
+        "description": "Delete a specific submission for a specific brief (only if it hasn't been submitted)",
         "parameters": [
           {
-            "name": "id",
+            "name": "brief_id",
+            "in": "path",
+            "required": true,
+            "description": "Brief ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "submission_id",
             "in": "path",
             "required": true,
             "description": "Submission ID",
@@ -968,7 +1082,7 @@
             }
           },
           "404": {
-            "description": "Submission not found",
+            "description": "Brief or submission not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -980,47 +1094,7 @@
         }
       }
     },
-    "/submissions/{id}": {
-      "get": {
-        "tags": ["Submissions"],
-        "summary": "Get submission by ID",
-        "description": "Retrieve a specific submission by ID",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Submission ID",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Submission retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/submissionWithDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Submission not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
+
     "/portfolios": {
       "get": {
         "tags": ["Portfolios"],
@@ -2129,7 +2203,7 @@
                       "description": "Base64 encoded image string (with or without data URL prefix)"
                     },
                     "example": [
-                      "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                      "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxAAPwCdABmX/9k="
                     ]
                   },
                   "tags": {
@@ -2755,6 +2829,933 @@
           },
           "404": {
             "description": "Tag not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reactions": {
+      "get": {
+        "tags": ["Reactions"],
+        "summary": "Get reactions by submission",
+        "description": "Retrieve all reactions for a specific submission",
+        "parameters": [
+          {
+            "name": "submission_id",
+            "in": "query",
+            "description": "Submission ID to get reactions for",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reactions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/reaction"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing or invalid submission_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/reactions/{reaction_id}": {
+      "get": {
+        "tags": ["Reactions"],
+        "summary": "Get reaction by ID",
+        "description": "Retrieve a specific reaction by ID",
+        "parameters": [
+          {
+            "name": "reaction_id",
+            "in": "path",
+            "required": true,
+            "description": "Reaction ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reaction retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reaction"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid reaction ID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reaction"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Reactions"],
+        "summary": "Update reaction",
+        "description": "Update an existing reaction",
+        "parameters": [
+          {
+            "name": "reaction_id",
+            "in": "path",
+            "required": true,
+            "description": "Reaction ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reaction"],
+                "properties": {
+                  "reaction": {
+                    "type": "string",
+                    "enum": ["like", "love", "wow", "haha", "sad", "angry"],
+                    "description": "New reaction type"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reaction updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reaction"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reaction"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Reactions"],
+        "summary": "Delete reaction",
+        "description": "Delete a reaction",
+        "parameters": [
+          {
+            "name": "reaction_id",
+            "in": "path",
+            "required": true,
+            "description": "Reaction ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Reaction deleted successfully"
+          },
+          "400": {
+            "description": "Invalid reaction ID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portfolios": {
+      "get": {
+        "tags": ["Portfolios"],
+        "summary": "Get all portfolios",
+        "description": "Retrieve all portfolios with optional filtering",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "description": "Filter portfolios by user ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Portfolios retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/portfolio"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portfolios/users/{user_id}": {
+      "get": {
+        "tags": ["Portfolios"],
+        "summary": "Get portfolios by user",
+        "description": "Retrieve all portfolios for a specific user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Portfolios retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/portfolio"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Portfolios"],
+        "summary": "Create portfolio for user",
+        "description": "Create a new portfolio for a specific user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "My Creative Portfolio"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "A collection of my best creative work"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Portfolio files (images, videos, documents)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Portfolio created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/portfolio"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portfolios/users/{user_id}/{portfolio_id}": {
+      "get": {
+        "tags": ["Portfolios"],
+        "summary": "Get portfolio by user and ID",
+        "description": "Retrieve a specific portfolio for a user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Portfolio retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/portfolio"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Portfolios"],
+        "summary": "Update portfolio for user",
+        "description": "Update a portfolio for a specific user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "Updated Portfolio Title"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Updated portfolio description"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "New portfolio files (images, videos, documents)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Portfolio updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/portfolio"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Portfolios"],
+        "summary": "Delete portfolio for user",
+        "description": "Delete a portfolio for a specific user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Portfolio deleted successfully"
+          },
+          "404": {
+            "description": "Portfolio or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/creatives": {
+      "get": {
+        "tags": ["Creatives"],
+        "summary": "Get all creatives",
+        "description": "Retrieve all creatives with optional filtering",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "query",
+            "required": false,
+            "description": "Filter creatives by portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "description": "Filter creatives by user ID (through portfolios)",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Creatives retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/creative"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/creatives/portfolios/{portfolio_id}": {
+      "get": {
+        "tags": ["Creatives"],
+        "summary": "Get creatives by portfolio",
+        "description": "Retrieve all creatives for a specific portfolio",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Creatives retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/creative"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Creatives"],
+        "summary": "Create creative in portfolio",
+        "description": "Create a new creative in a specific portfolio",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "Amazing Creative Work"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "This is my best creative piece"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Creative files (images, videos, documents)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Creative created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/creative"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Portfolio not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/creatives/portfolios/{portfolio_id}/{creative_id}": {
+      "get": {
+        "tags": ["Creatives"],
+        "summary": "Get creative by portfolio and ID",
+        "description": "Retrieve a specific creative from a portfolio",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "creative_id",
+            "in": "path",
+            "required": true,
+            "description": "Creative ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Creative retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/creative"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Creative or portfolio not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Creatives"],
+        "summary": "Update creative in portfolio",
+        "description": "Update a creative in a specific portfolio",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "creative_id",
+            "in": "path",
+            "required": true,
+            "description": "Creative ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "Updated Creative Title"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Updated creative description"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "New creative files (images, videos, documents)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Creative updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/creative"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Creative or portfolio not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Creatives"],
+        "summary": "Delete creative from portfolio",
+        "description": "Delete a creative from a specific portfolio",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "description": "Portfolio ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "creative_id",
+            "in": "path",
+            "required": true,
+            "description": "Creative ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Creative deleted successfully"
+          },
+          "404": {
+            "description": "Creative or portfolio not found",
             "content": {
               "application/json": {
                 "schema": {

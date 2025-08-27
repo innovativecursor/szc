@@ -16,9 +16,9 @@ const fileFilter = (req, file, cb) => {
     );
   }
 
-  // Check file size (100MB limit)
-  if (!validateFileSize(file.size)) {
-    return cb(new Error("File too large. Maximum file size is 100MB."), false);
+  // Check file size (10MB limit for submissions)
+  if (!validateFileSize(file.size, 10485760)) {
+    return cb(new Error("File too large. Maximum file size is 10MB."), false);
   }
 
   cb(null, true);
@@ -29,7 +29,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 104857600, // 100MB
+    fileSize: 10485760, // 10MB for submissions
     files: 10, // Maximum 10 files
   },
 });
@@ -50,7 +50,7 @@ const handleUploadError = (error, req, res, next) => {
     if (error.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
         code: 413,
-        message: "File too large. Maximum file size is 100MB.",
+        message: "File too large. Maximum file size is 10MB.",
       });
     }
     if (error.code === "LIMIT_FILE_COUNT") {

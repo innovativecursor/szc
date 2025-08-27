@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "init-db": "node api/config/init-db.js",
+    "migrate": "node api/migrations/run-migration.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

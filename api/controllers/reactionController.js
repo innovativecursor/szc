@@ -1,215 +1,304 @@
-const { Reaction, Submission, User, Portfolio } = require("../models");
+const { Reaction, Submission, User } = require("../models");
 const { Op } = require("sequelize");
 
-// Get all reactions with optional filtering
-const getReactions = async (req, res) => {
+// Get all reactions for a specific submission
+const getReactionsBySubmission = async (req, res) => {
   try {
-    const { type, submission_id, user_id } = req.query;
-    const whereClause = {};
+    const { submission_id } = req.params;
 
-    if (type) {
-      whereClause.type = type;
-    }
-    if (submission_id) {
-      whereClause.submissionId = submission_id;
-    }
-    if (user_id) {
-      whereClause.userId = user_id;
-    }
-
-    const reactions = await Reaction.findAll({
-      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
-      include: [
-        { model: Submission, as: "submission" },
-        { model: User, as: "user" },
-        { model: Portfolio, as: "portfolio" },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-
-    res.json(reactions);
-  } catch (error) {
-    console.error("Error fetching reactions:", error);
-    res.status(500).json({ code: 500, message: "Internal server error" });
-  }
-};
-
-// Get reaction by ID
-const getReactionById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        id
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid reaction ID format" });
-    }
-
-    const reaction = await Reaction.findByPk(id, {
-      include: [
-        { model: Submission, as: "submission" },
-        { model: User, as: "user" },
-        { model: Portfolio, as: "portfolio" },
-      ],
-    });
-
-    if (!reaction) {
-      return res.status(404).json({ code: 404, message: "Reaction not found" });
-    }
-
-    res.json(reaction);
-  } catch (error) {
-    console.error("Error fetching reaction:", error);
-    res.status(500).json({ code: 500, message: "Internal server error" });
-  }
-};
-
-// Create new reaction
-const createReaction = async (req, res) => {
-  try {
-    const { submission_id, user_id, type } = req.body;
-
-    // Validate required fields
-    if (!submission_id || !user_id || !type) {
-      return res.status(400).json({
-        code: 400,
-        message: "submission_id, user_id, and type are required",
-      });
-    }
-
-    // Validate UUIDs
+    // Validate submission_id UUID format
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         submission_id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid submission_id format" });
-    }
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        user_id
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid user_id format" });
-    }
-
-    // Validate reaction type
-    if (!["like", "vote"].includes(type)) {
       return res.status(400).json({
         code: 400,
-        message: "Type must be either 'like' or 'vote'",
+        message: "Invalid submission_id format",
       });
     }
 
     // Check if submission exists
     const submission = await Submission.findByPk(submission_id);
     if (!submission) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Submission not found" });
+      return res.status(404).json({
+        code: 404,
+        message: "Submission not found",
+      });
+    }
+
+    const reactions = await Reaction.findAll({
+      where: { submissionId: submission_id },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "username", "email"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Transform reactions to match expected API response format
+    const formattedReactions = reactions.map((reaction) => ({
+      id: reaction.id,
+      created_at: reaction.createdAt,
+      submission_id: reaction.submissionId,
+      user_id: reaction.userId,
+      reaction: reaction.reaction,
+    }));
+
+    res.json(formattedReactions);
+  } catch (error) {
+    console.error("Error fetching reactions by submission:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
+// Create a new reaction on a submission
+const createReaction = async (req, res) => {
+  try {
+    const { submission_id } = req.params;
+    const { user_id, reaction } = req.body;
+
+    // Validate required fields
+    if (!user_id || !reaction) {
+      return res.status(400).json({
+        code: 400,
+        message: "user_id and reaction are required",
+      });
+    }
+
+    // Validate submission_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        submission_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission_id format",
+      });
+    }
+
+    // Validate user_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        user_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid user_id format",
+      });
+    }
+
+    // Validate reaction type
+    const validReactions = ["like", "love", "wow", "haha", "sad", "angry"];
+    if (!validReactions.includes(reaction)) {
+      return res.status(400).json({
+        code: 400,
+        message: `Invalid reaction type. Must be one of: ${validReactions.join(
+          ", "
+        )}`,
+      });
+    }
+
+    // Check if submission exists
+    const submission = await Submission.findByPk(submission_id);
+    if (!submission) {
+      return res.status(404).json({
+        code: 404,
+        message: "Submission not found",
+      });
     }
 
     // Check if user exists
     const user = await User.findByPk(user_id);
     if (!user) {
-      return res.status(400).json({ code: 400, message: "User not found" });
+      return res.status(404).json({
+        code: 404,
+        message: "User not found",
+      });
     }
 
-    // Check if reaction already exists
+    // Check if user already reacted to this submission
     const existingReaction = await Reaction.findOne({
       where: {
         submissionId: submission_id,
         userId: user_id,
-        type: type,
       },
     });
 
     if (existingReaction) {
-      return res.status(400).json({
-        code: 400,
-        message: "Reaction already exists",
-      });
+      // Update existing reaction
+      existingReaction.reaction = reaction;
+      await existingReaction.save();
+
+      const formattedReaction = {
+        id: existingReaction.id,
+        created_at: existingReaction.createdAt,
+        submission_id: existingReaction.submissionId,
+        user_id: existingReaction.userId,
+        reaction: existingReaction.reaction,
+      };
+
+      return res.json(formattedReaction);
     }
 
-    const reaction = await Reaction.create({
+    // Create new reaction
+    const newReaction = await Reaction.create({
       submissionId: submission_id,
       userId: user_id,
-      type: type,
+      reaction,
     });
 
-    res.status(201).json(reaction);
+    // Transform response to match expected API format
+    const formattedReaction = {
+      id: newReaction.id,
+      created_at: newReaction.createdAt,
+      submission_id: newReaction.submissionId,
+      user_id: newReaction.userId,
+      reaction: newReaction.reaction,
+    };
+
+    res.status(201).json(formattedReaction);
   } catch (error) {
     console.error("Error creating reaction:", error);
     res.status(500).json({ code: 500, message: "Internal server error" });
   }
 };
 
-// Update reaction
-const updateReaction = async (req, res) => {
+// Get a specific reaction by ID
+const getReactionById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { type } = req.body;
+    const { reaction_id } = req.params;
 
+    // Validate reaction_id UUID format
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        id
+        reaction_id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid reaction ID format" });
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid reaction_id format",
+      });
     }
 
-    const reaction = await Reaction.findByPk(id);
+    const reaction = await Reaction.findByPk(reaction_id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "username", "email"],
+        },
+      ],
+    });
+
     if (!reaction) {
-      return res.status(404).json({ code: 404, message: "Reaction not found" });
+      return res.status(404).json({
+        code: 404,
+        message: "Reaction not found",
+      });
     }
 
-    // Update type if provided
-    if (type !== undefined) {
-      if (!["like", "vote"].includes(type)) {
-        return res.status(400).json({
-          code: 400,
-          message: "Type must be either 'like' or 'vote'",
-        });
-      }
-      reaction.type = type;
+    // Transform response to match expected API format
+    const formattedReaction = {
+      id: reaction.id,
+      created_at: reaction.createdAt,
+      submission_id: reaction.submissionId,
+      user_id: reaction.userId,
+      reaction: reaction.reaction,
+    };
+
+    res.json(formattedReaction);
+  } catch (error) {
+    console.error("Error fetching reaction by ID:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
+// Update a reaction
+const updateReaction = async (req, res) => {
+  try {
+    const { reaction_id } = req.params;
+    const { reaction } = req.body;
+
+    // Validate reaction_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        reaction_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid reaction_id format",
+      });
     }
 
-    await reaction.save();
-    res.json(reaction);
+    // Validate reaction type
+    const validReactions = ["like", "love", "wow", "haha", "sad", "angry"];
+    if (!reaction || !validReactions.includes(reaction)) {
+      return res.status(400).json({
+        code: 400,
+        message: `Valid reaction type is required. Must be one of: ${validReactions.join(
+          ", "
+        )}`,
+      });
+    }
+
+    const existingReaction = await Reaction.findByPk(reaction_id);
+    if (!existingReaction) {
+      return res.status(404).json({
+        code: 404,
+        message: "Reaction not found",
+      });
+    }
+
+    // Update reaction
+    existingReaction.reaction = reaction;
+    await existingReaction.save();
+
+    // Transform response to match expected API format
+    const formattedReaction = {
+      id: existingReaction.id,
+      created_at: existingReaction.createdAt,
+      submission_id: existingReaction.submissionId,
+      user_id: existingReaction.userId,
+      reaction: existingReaction.reaction,
+    };
+
+    res.json(formattedReaction);
   } catch (error) {
     console.error("Error updating reaction:", error);
     res.status(500).json({ code: 500, message: "Internal server error" });
   }
 };
 
-// Delete reaction
+// Delete a reaction
 const deleteReaction = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { reaction_id } = req.params;
 
+    // Validate reaction_id UUID format
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        id
+        reaction_id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid reaction ID format" });
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid reaction_id format",
+      });
     }
 
-    const reaction = await Reaction.findByPk(id);
+    const reaction = await Reaction.findByPk(reaction_id);
     if (!reaction) {
-      return res.status(404).json({ code: 404, message: "Reaction not found" });
+      return res.status(404).json({
+        code: 404,
+        message: "Reaction not found",
+      });
     }
 
     await reaction.destroy();
@@ -220,10 +309,56 @@ const deleteReaction = async (req, res) => {
   }
 };
 
+// Get all reactions for a specific submission
+const getAllReactions = async (req, res) => {
+  try {
+    const { submission_id } = req.query;
+
+    if (!submission_id) {
+      return res.status(400).json({
+        code: 400,
+        message: "submission_id is required",
+      });
+    }
+
+    // Validate submission_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        submission_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission_id format",
+      });
+    }
+
+    const reactions = await Reaction.findAll({
+      where: { submissionId: submission_id },
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Transform reactions to match expected API response format
+    const formattedReactions = reactions.map((reaction) => ({
+      id: reaction.id,
+      created_at: reaction.createdAt,
+      submission_id: reaction.submissionId,
+      user_id: reaction.userId,
+      reaction: reaction.reaction,
+    }));
+
+    res.json(formattedReactions);
+  } catch (error) {
+    console.error("Error fetching reactions for submission:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
 module.exports = {
-  getReactions,
-  getReactionById,
+  getReactionsBySubmission,
   createReaction,
+  getReactionById,
   updateReaction,
   deleteReaction,
+  getAllReactions,
 };

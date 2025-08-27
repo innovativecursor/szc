@@ -1,5 +1,165 @@
 const { Submission, Brief, User } = require("../models");
 const { Op } = require("sequelize");
+const { uploadMultipleFilesToS3 } = require("../services/s3Service");
+
+// Get submissions by brief ID (nested route: /briefs/{brief_id}/submissions)
+const getSubmissionsByBrief = async (req, res) => {
+  try {
+    const { brief_id } = req.params;
+
+    // Validate brief_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        brief_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid brief_id format",
+      });
+    }
+
+    // Check if brief exists
+    const brief = await Brief.findByPk(brief_id);
+    if (!brief) {
+      return res.status(404).json({
+        code: 404,
+        message: "Brief not found",
+      });
+    }
+
+    const submissions = await Submission.findAll({
+      where: { briefId: brief_id },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "username", "email"], // Only include necessary user fields
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Transform submissions to match expected API response format
+    const formattedSubmissions = submissions.map((submission) => ({
+      id: submission.id,
+      created_at: submission.createdAt,
+      brief_id: submission.briefId,
+      user_id: submission.userId,
+      description: submission.description,
+      is_finalist: submission.isFinalist,
+      is_winner: submission.isWinner,
+      likes: submission.likes,
+      votes: submission.votes,
+      files: submission.files || [],
+    }));
+
+    res.json(formattedSubmissions);
+  } catch (error) {
+    console.error("Error fetching submissions by brief:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
+// Create new submission by brief ID (nested route: /briefs/{brief_id}/submissions)
+const createSubmissionByBrief = async (req, res) => {
+  try {
+    const { brief_id } = req.params;
+    const { user_id, description } = req.body;
+    const uploadedFiles = req.files; // Files uploaded via multer
+
+    // Validate required fields
+    if (!user_id) {
+      return res.status(400).json({
+        code: 400,
+        message: "user_id is required",
+      });
+    }
+
+    // Check if files were uploaded
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      return res.status(400).json({
+        code: 400,
+        message: "At least one file is required",
+      });
+    }
+
+    // Validate brief_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        brief_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid brief_id format",
+      });
+    }
+
+    // Validate user_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        user_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid user_id format",
+      });
+    }
+
+    // Check if brief exists
+    const brief = await Brief.findByPk(brief_id);
+    if (!brief) {
+      return res.status(404).json({
+        code: 404,
+        message: "Brief not found",
+      });
+    }
+
+    // Upload files to S3
+    let files;
+    try {
+      files = await uploadMultipleFilesToS3(uploadedFiles, "submissions");
+    } catch (uploadError) {
+      console.error("Error uploading files to S3:", uploadError);
+      return res.status(500).json({
+        code: 500,
+        message: "Failed to upload files. Please try again.",
+      });
+    }
+
+    const submission = await Submission.create({
+      briefId: brief_id,
+      userId: user_id,
+      description,
+      files,
+      isFinalist: false,
+      isWinner: false,
+      likes: 0,
+      votes: 0,
+    });
+
+    // Transform response to match expected API format
+    const formattedSubmission = {
+      id: submission.id,
+      created_at: submission.createdAt,
+      brief_id: submission.briefId,
+      user_id: submission.userId,
+      description: submission.description,
+      is_finalist: submission.isFinalist,
+      is_winner: submission.isWinner,
+      likes: submission.likes,
+      votes: submission.votes,
+      files: submission.files || [],
+    };
+
+    res.status(201).json(formattedSubmission);
+  } catch (error) {
+    console.error("Error creating submission:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
 
 // Get all submissions with optional filtering
 const getSubmissions = async (req, res) => {
@@ -43,9 +203,10 @@ const getSubmissionById = async (req, res) => {
         id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid submission ID format" });
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission ID format",
+      });
     }
 
     const submission = await Submission.findByPk(id, {
@@ -56,9 +217,10 @@ const getSubmissionById = async (req, res) => {
     });
 
     if (!submission) {
-      return res
-        .status(404)
-        .json({ code: 404, message: "Submission not found" });
+      return res.status(404).json({
+        code: 404,
+        message: "Submission not found",
+      });
     }
 
     res.json(submission);
@@ -68,7 +230,7 @@ const getSubmissionById = async (req, res) => {
   }
 };
 
-// Create new submission
+// Create new submission (legacy route - kept for backward compatibility)
 const createSubmission = async (req, res) => {
   try {
     const { brief_id, user_id, description, files } = req.body;
@@ -93,18 +255,20 @@ const createSubmission = async (req, res) => {
         brief_id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid brief_id format" });
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid brief_id format",
+      });
     }
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         user_id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid user_id format" });
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid user_id format",
+      });
     }
 
     // Validate files structure
@@ -132,6 +296,8 @@ const createSubmission = async (req, res) => {
       files,
       isFinalist: false,
       isWinner: false,
+      likes: 0,
+      votes: 0,
     });
 
     res.status(201).json(submission);
@@ -145,29 +311,35 @@ const createSubmission = async (req, res) => {
 const updateSubmission = async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, is_finalist, is_winner, files } = req.body;
+    const { description, is_finalist, is_winner, files, likes, votes } =
+      req.body;
 
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
         id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid submission ID format" });
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission ID format",
+      });
     }
 
     const submission = await Submission.findByPk(id);
     if (!submission) {
-      return res
-        .status(404)
-        .json({ code: 404, message: "Submission not found" });
+      return res.status(404).json({
+        code: 404,
+        message: "Submission not found",
+      });
     }
 
     // Update fields if provided
     if (description !== undefined) submission.description = description;
     if (is_finalist !== undefined) submission.isFinalist = is_finalist;
     if (is_winner !== undefined) submission.isWinner = is_winner;
+    if (likes !== undefined) submission.likes = likes;
+    if (votes !== undefined) submission.votes = votes;
+
     if (files !== undefined) {
       // Validate files structure
       if (Array.isArray(files) && files.length > 0) {
@@ -199,6 +371,115 @@ const updateSubmission = async (req, res) => {
   }
 };
 
+// Update submission by brief ID (nested route: /briefs/{brief_id}/submissions/{submission_id})
+const updateSubmissionByBrief = async (req, res) => {
+  try {
+    const { brief_id, submission_id } = req.params;
+    const { description, is_finalist, is_winner, files, likes, votes } =
+      req.body;
+
+    // Validate brief_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        brief_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid brief_id format",
+      });
+    }
+
+    // Validate submission_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        submission_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission_id format",
+      });
+    }
+
+    // Check if brief exists
+    const brief = await Brief.findByPk(brief_id);
+    if (!brief) {
+      return res.status(404).json({
+        code: 404,
+        message: "Brief not found",
+      });
+    }
+
+    // Find submission and verify it belongs to the specified brief
+    const submission = await Submission.findOne({
+      where: {
+        id: submission_id,
+        briefId: brief_id,
+      },
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        code: 404,
+        message:
+          "Submission not found or does not belong to the specified brief",
+      });
+    }
+
+    // Update fields if provided
+    if (description !== undefined) submission.description = description;
+    if (is_finalist !== undefined) submission.isFinalist = is_finalist;
+    if (is_winner !== undefined) submission.isWinner = is_winner;
+    if (likes !== undefined) submission.likes = likes;
+    if (votes !== undefined) submission.votes = votes;
+
+    if (files !== undefined) {
+      // Validate files structure
+      if (Array.isArray(files) && files.length > 0) {
+        for (const file of files) {
+          if (
+            !file.id ||
+            !file.filename ||
+            !file.size ||
+            !file.type ||
+            !file.url ||
+            !file.hash
+          ) {
+            return res.status(400).json({
+              code: 400,
+              message:
+                "Each file must have id, filename, size, type, url, and hash",
+            });
+          }
+        }
+        submission.files = files;
+      }
+    }
+
+    await submission.save();
+
+    // Transform response to match expected API format
+    const formattedSubmission = {
+      id: submission.id,
+      created_at: submission.createdAt,
+      brief_id: submission.briefId,
+      user_id: submission.userId,
+      description: submission.description,
+      is_finalist: submission.isFinalist,
+      is_winner: submission.isWinner,
+      likes: submission.likes,
+      votes: submission.votes,
+      files: submission.files || [],
+    };
+
+    res.json(formattedSubmission);
+  } catch (error) {
+    console.error("Error updating submission by brief:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
 // Delete submission
 const deleteSubmission = async (req, res) => {
   try {
@@ -209,16 +490,18 @@ const deleteSubmission = async (req, res) => {
         id
       )
     ) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Invalid submission ID format" });
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission ID format",
+      });
     }
 
     const submission = await Submission.findByPk(id);
     if (!submission) {
-      return res
-        .status(404)
-        .json({ code: 404, message: "Submission not found" });
+      return res.status(404).json({
+        code: 404,
+        message: "Submission not found",
+      });
     }
 
     // Check if submission can be deleted (not already submitted)
@@ -237,7 +520,164 @@ const deleteSubmission = async (req, res) => {
   }
 };
 
+// Delete submission by brief ID (nested route: /briefs/{brief_id}/submissions/{submission_id})
+const deleteSubmissionByBrief = async (req, res) => {
+  try {
+    const { brief_id, submission_id } = req.params;
+
+    // Validate brief_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        brief_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid brief_id format",
+      });
+    }
+
+    // Validate submission_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        submission_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission_id format",
+      });
+    }
+
+    // Check if brief exists
+    const brief = await Brief.findByPk(brief_id);
+    if (!brief) {
+      return res.status(404).json({
+        code: 404,
+        message: "Brief not found",
+      });
+    }
+
+    // Find submission and verify it belongs to the specified brief
+    const submission = await Submission.findOne({
+      where: {
+        id: submission_id,
+        briefId: brief_id,
+      },
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        code: 404,
+        message:
+          "Submission not found or does not belong to the specified brief",
+      });
+    }
+
+    // Check if submission can be deleted (not already submitted)
+    if (submission.status === "submitted") {
+      return res.status(400).json({
+        code: 400,
+        message: "Cannot delete submitted submission",
+      });
+    }
+
+    await submission.destroy();
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting submission by brief:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
+// Get submission by brief ID and submission ID (nested route: /briefs/{brief_id}/submissions/{submission_id})
+const getSubmissionByBrief = async (req, res) => {
+  try {
+    const { brief_id, submission_id } = req.params;
+
+    // Validate brief_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        brief_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid brief_id format",
+      });
+    }
+
+    // Validate submission_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        submission_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission_id format",
+      });
+    }
+
+    // Check if brief exists
+    const brief = await Brief.findByPk(brief_id);
+    if (!brief) {
+      return res.status(404).json({
+        code: 404,
+        message: "Brief not found",
+      });
+    }
+
+    // Find submission and verify it belongs to the specified brief
+    const submission = await Submission.findOne({
+      where: {
+        id: submission_id,
+        briefId: brief_id,
+      },
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "username", "email"],
+        },
+      ],
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        code: 404,
+        message:
+          "Submission not found or does not belong to the specified brief",
+      });
+    }
+
+    // Transform response to match expected API format
+    const formattedSubmission = {
+      id: submission.id,
+      created_at: submission.createdAt,
+      brief_id: submission.briefId,
+      user_id: submission.userId,
+      description: submission.description,
+      is_finalist: submission.isFinalist,
+      is_winner: submission.isWinner,
+      likes: submission.likes,
+      votes: submission.votes,
+      files: submission.files || [],
+    };
+
+    res.json(formattedSubmission);
+  } catch (error) {
+    console.error("Error fetching submission by brief:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
 module.exports = {
+  getSubmissionsByBrief,
+  createSubmissionByBrief,
+  getSubmissionByBrief,
+  updateSubmissionByBrief,
+  deleteSubmissionByBrief,
   getSubmissions,
   getSubmissionById,
   createSubmission,

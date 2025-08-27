@@ -18,7 +18,7 @@ const Submission = sequelize.define(
       },
       field: "brief_id",
     },
-    creativeId: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -27,15 +27,7 @@ const Submission = sequelize.define(
       },
       field: "user_id",
     },
-    title: {
-      type: DataTypes.STRING(200),
-      allowNull: false,
-    },
     description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    concept: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
@@ -49,12 +41,50 @@ const Submission = sequelize.define(
             throw new Error("Files must be an array");
           }
           value.forEach((file) => {
-            if (!file.id || !file.filename || !file.url) {
-              throw new Error("Each file must have id, filename, and url");
+            if (
+              !file.id ||
+              !file.filename ||
+              !file.size ||
+              !file.type ||
+              !file.url ||
+              !file.hash
+            ) {
+              throw new Error(
+                "Each file must have id, filename, size, type, url, and hash"
+              );
             }
           });
         },
       },
+    },
+    isFinalist: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: "is_finalist",
+    },
+    isWinner: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: "is_winner",
+    },
+    likes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      allowNull: false,
+    },
+    votes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      allowNull: false,
+    },
+    // Additional fields for internal use
+    title: {
+      type: DataTypes.STRING(200),
+      allowNull: true,
+    },
+    concept: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     thumbnail: {
       type: DataTypes.STRING(255),
@@ -80,22 +110,11 @@ const Submission = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
-    isFinalist: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      field: "is_finalist",
-    },
-    isWinner: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      field: "is_winner",
-    },
     tags: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
     },
-
     metadata: {
       type: DataTypes.JSON,
       allowNull: true,
@@ -117,6 +136,9 @@ const Submission = sequelize.define(
   {
     tableName: "submissions",
     timestamps: true,
+    // Map createdAt to created_at for API response
+    createdAt: "created_at",
+    updatedAt: "updated_at",
   }
 );
 
