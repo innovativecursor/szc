@@ -1272,70 +1272,13 @@
     },
 
     "/api/brands/{id}/briefs": {
-      "get": {
-        "tags": ["Brands"],
-        "summary": "Get briefs by brand",
-        "description": "Retrieve all briefs associated with a specific brand. Read access for all authenticated users.",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Brand ID",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Briefs retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/brief"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Brand not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/error"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": ["Brands"],
-        "summary": "Create brief for brand",
-        "description": "Create a new brief associated with a specific brand (Admin and Superadmin only)",
+        "summary": "Create a new brief for a specific brand",
+        "description": "Create a new brief associated with a specific brand. Only admin users can create briefs.",
         "security": [
           {
-            "BearerAuth": []
+            "bearerAuth": []
           }
         ],
         "parameters": [
@@ -1356,69 +1299,62 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["title", "description"],
+                "required": [
+                  "title",
+                  "description",
+                  "deadline",
+                  "budget",
+                  "requirements"
+                ],
                 "properties": {
                   "title": {
                     "type": "string",
-                    "minLength": 5,
+                    "minLength": 1,
                     "maxLength": 200,
-                    "description": "Brief title"
+                    "example": "Brand Identity Redesign"
                   },
                   "description": {
                     "type": "string",
-                    "minLength": 20,
+                    "minLength": 10,
                     "maxLength": 2000,
-                    "description": "Brief description"
-                  },
-                  "requirements": {
-                    "type": "string",
-                    "maxLength": 1000,
-                    "description": "Creative requirements"
+                    "example": "We need a complete brand identity redesign including logo, color palette, and brand guidelines."
                   },
                   "deadline": {
                     "type": "string",
                     "format": "date",
-                    "description": "Submission deadline (YYYY-MM-DD)"
+                    "example": "2024-12-31"
                   },
                   "budget": {
-                    "type": "object",
-                    "properties": {
-                      "min": {
-                        "type": "number",
-                        "minimum": 0,
-                        "description": "Minimum budget"
-                      },
-                      "max": {
-                        "type": "number",
-                        "minimum": 0,
-                        "description": "Maximum budget"
-                      },
-                      "currency": {
-                        "type": "string",
-                        "default": "USD",
-                        "description": "Budget currency"
-                      }
-                    }
+                    "type": "number",
+                    "minimum": 0,
+                    "example": 5000
+                  },
+                  "requirements": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "Logo design",
+                      "Color palette",
+                      "Brand guidelines",
+                      "Mockups"
+                    ]
                   },
                   "tags": {
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "format": "uuid"
+                      "type": "string"
                     },
-                    "description": "Array of tag IDs"
+                    "example": ["branding", "logo", "identity"]
                   },
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "draft",
-                      "active",
-                      "paused",
-                      "completed",
-                      "cancelled"
-                    ],
-                    "default": "draft",
-                    "description": "Brief status"
+                  "attachments": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "example": ["https://example.com/brand-guidelines.pdf"]
                   }
                 }
               }
@@ -1431,13 +1367,26 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/brief"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Brief created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Brief"
+                    }
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Validation error",
+            "description": "Bad request - validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1447,7 +1396,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing token",
             "content": {
               "application/json": {
                 "schema": {
@@ -1457,7 +1406,7 @@
             }
           },
           "403": {
-            "description": "Forbidden - Admin or Superadmin role required",
+            "description": "Forbidden - insufficient permissions",
             "content": {
               "application/json": {
                 "schema": {
@@ -1468,6 +1417,92 @@
           },
           "404": {
             "description": "Brand not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Brands"],
+        "summary": "Get all briefs for a specific brand",
+        "description": "Retrieve all briefs associated with a specific brand. Any authenticated user can view briefs.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Brand ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Briefs retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Brief"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Brand not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
