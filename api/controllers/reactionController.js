@@ -59,13 +59,16 @@ const getReactionsBySubmission = async (req, res) => {
 const createReaction = async (req, res) => {
   try {
     const { submission_id } = req.params;
-    const { user_id, reaction } = req.body;
+    const { reaction } = req.body;
+
+    // Use authenticated user's ID instead of body
+    const user_id = req.user.id;
 
     // Validate required fields
-    if (!user_id || !reaction) {
+    if (!reaction) {
       return res.status(400).json({
         code: 400,
-        message: "user_id and reaction are required",
+        message: "reaction is required",
       });
     }
 
@@ -78,18 +81,6 @@ const createReaction = async (req, res) => {
       return res.status(400).json({
         code: 400,
         message: "Invalid submission_id format",
-      });
-    }
-
-    // Validate user_id UUID format
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        user_id
-      )
-    ) {
-      return res.status(400).json({
-        code: 400,
-        message: "Invalid user_id format",
       });
     }
 
@@ -110,15 +101,6 @@ const createReaction = async (req, res) => {
       return res.status(404).json({
         code: 404,
         message: "Submission not found",
-      });
-    }
-
-    // Check if user exists
-    const user = await User.findByPk(user_id);
-    if (!user) {
-      return res.status(404).json({
-        code: 404,
-        message: "User not found",
       });
     }
 
@@ -256,6 +238,14 @@ const updateReaction = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only update their own reactions
+    if (existingReaction.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only update your own reactions.",
+      });
+    }
+
     // Update reaction
     existingReaction.reaction = reaction;
     await existingReaction.save();
@@ -298,6 +288,14 @@ const deleteReaction = async (req, res) => {
       return res.status(404).json({
         code: 404,
         message: "Reaction not found",
+      });
+    }
+
+    // Check ownership - users can only delete their own reactions
+    if (reaction.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only delete your own reactions.",
       });
     }
 

@@ -65,16 +65,11 @@ const getSubmissionsByBrief = async (req, res) => {
 const createSubmissionByBrief = async (req, res) => {
   try {
     const { brief_id } = req.params;
-    const { user_id, description } = req.body;
+    const { description } = req.body;
     const uploadedFiles = req.files; // Files uploaded via multer
 
-    // Validate required fields
-    if (!user_id) {
-      return res.status(400).json({
-        code: 400,
-        message: "user_id is required",
-      });
-    }
+    // Use authenticated user's ID instead of body
+    const user_id = req.user.id;
 
     // Check if files were uploaded
     if (!uploadedFiles || uploadedFiles.length === 0) {
@@ -93,18 +88,6 @@ const createSubmissionByBrief = async (req, res) => {
       return res.status(400).json({
         code: 400,
         message: "Invalid brief_id format",
-      });
-    }
-
-    // Validate user_id UUID format
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        user_id
-      )
-    ) {
-      return res.status(400).json({
-        code: 400,
-        message: "Invalid user_id format",
       });
     }
 
@@ -427,6 +410,14 @@ const updateSubmissionByBrief = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only update their own submissions
+    if (submission.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only update your own submissions.",
+      });
+    }
+
     // Update fields if provided
     if (description !== undefined) submission.description = description;
     if (is_finalist !== undefined) submission.isFinalist = is_finalist;
@@ -504,6 +495,14 @@ const deleteSubmission = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only delete their own submissions
+    if (submission.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only delete your own submissions.",
+      });
+    }
+
     // Check if submission can be deleted (not already submitted)
     if (submission.status === "submitted") {
       return res.status(400).json({
@@ -571,6 +570,14 @@ const deleteSubmissionByBrief = async (req, res) => {
         code: 404,
         message:
           "Submission not found or does not belong to the specified brief",
+      });
+    }
+
+    // Check ownership - users can only delete their own submissions
+    if (submission.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only delete your own submissions.",
       });
     }
 

@@ -23,12 +23,13 @@ const User = sequelize.define(
       allowNull: false,
       unique: true,
       validate: {
-        isEmail: true,
+        // Custom email validation to preserve dots
+        is: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       },
     },
     password: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true, // Allow null for OAuth users
     },
     displayName: {
       type: DataTypes.STRING(100),
@@ -62,7 +63,8 @@ const User = sequelize.define(
       allowNull: true,
       field: "alternate_email",
       validate: {
-        isEmail: true,
+        // Custom email validation to preserve dots
+        is: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       },
     },
     socialLinks: {
@@ -70,6 +72,12 @@ const User = sequelize.define(
       allowNull: true,
       defaultValue: {},
       field: "social_links",
+    },
+    googleId: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      unique: true,
+      field: "google_id",
     },
     roles: {
       type: DataTypes.ENUM("super_admin", "admin", "user"),
@@ -106,7 +114,7 @@ const User = sequelize.define(
         }
       },
       beforeUpdate: async (user) => {
-        if (user.changed("password")) {
+        if (user.changed("password") && user.password) {
           user.password = await bcrypt.hash(user.password, 10);
         }
       },
@@ -116,6 +124,9 @@ const User = sequelize.define(
 
 // Instance method to compare password
 User.prototype.comparePassword = async function (candidatePassword) {
+  if (!this.password) {
+    return false; // OAuth users don't have passwords
+  }
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

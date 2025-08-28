@@ -135,6 +135,11 @@ const userResponses = {
           instagram: "https://instagram.com/johndoe",
         },
       },
+      googleId: {
+        type: "string",
+        example: "123456789012345678901",
+        description: "Google OAuth ID for OAuth users",
+      },
       roles: {
         type: "string",
         enum: ["super_admin", "admin", "user"],

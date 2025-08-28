@@ -103,7 +103,7 @@ const findOrCreateUser = async (googleUserInfo) => {
     if (user) {
       // Update last login and OAuth info
       await user.update({
-        lastLoginAt: new Date(),
+        lastLogin: new Date(),
         googleId: googleUserInfo.sub,
         profileImageURL: googleUserInfo.picture,
       });
@@ -118,6 +118,7 @@ const findOrCreateUser = async (googleUserInfo) => {
         isVerified: true,
         isActive: true,
         roles: "user",
+        password: null, // OAuth users don't need password
       });
     }
 

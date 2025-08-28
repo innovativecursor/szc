@@ -73,6 +73,15 @@ const createCreativeByPortfolio = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only create creatives in their own portfolios
+    if (portfolio.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message:
+          "Access denied. You can only create creatives in your own portfolios.",
+      });
+    }
+
     // Upload files to S3
     let files = [];
     if (uploadedFiles && uploadedFiles.length > 0) {
@@ -211,6 +220,15 @@ const updateCreativeByPortfolio = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only update creatives in their own portfolios
+    if (portfolio.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message:
+          "Access denied. You can only update creatives in your own portfolios.",
+      });
+    }
+
     // Handle file uploads if new files are provided
     let files = creative.files || [];
     if (uploadedFiles && uploadedFiles.length > 0) {
@@ -291,6 +309,15 @@ const deleteCreativeByPortfolio = async (req, res) => {
       return res.status(404).json({
         code: 404,
         message: "Creative not found",
+      });
+    }
+
+    // Check ownership - users can only delete creatives in their own portfolios
+    if (portfolio.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message:
+          "Access denied. You can only delete creatives in your own portfolios.",
       });
     }
 

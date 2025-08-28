@@ -264,6 +264,108 @@ const requireBusinessHours = () => {
   };
 };
 
+// Middleware to require admin role for admin-only resources
+const requireAdminAccess = () => {
+  return (req, res, next) => {
+    try {
+      if (!req.user || !req.user.roles) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const userRoles = Array.isArray(req.user.roles)
+        ? req.user.roles
+        : [req.user.roles];
+
+      // Check if user has admin or super_admin role
+      if (hasAnyRole(userRoles, ["admin", "super_admin"])) {
+        next();
+      } else {
+        return res.status(403).json({
+          success: false,
+          message: "Admin access required for this resource",
+        });
+      }
+    } catch (error) {
+      console.error("Error in requireAdminAccess middleware:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  };
+};
+
+// Middleware to require user role for user-only resources
+const requireUserAccess = () => {
+  return (req, res, next) => {
+    try {
+      if (!req.user || !req.user.roles) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const userRoles = Array.isArray(req.user.roles)
+        ? req.user.roles
+        : [req.user.roles];
+
+      // Any authenticated user can access user resources
+      if (hasAnyRole(userRoles, ["user", "admin", "super_admin"])) {
+        next();
+      } else {
+        return res.status(403).json({
+          success: false,
+          message: "User access required for this resource",
+        });
+      }
+    } catch (error) {
+      console.error("Error in requireUserAccess middleware:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  };
+};
+
+// Middleware to check if user can read a resource (for briefs, tags, brands)
+const requireReadAccess = () => {
+  return (req, res, next) => {
+    try {
+      if (!req.user || !req.user.roles) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const userRoles = Array.isArray(req.user.roles)
+        ? req.user.roles
+        : [req.user.roles];
+
+      // Any authenticated user can read these resources
+      if (hasAnyRole(userRoles, ["user", "admin", "super_admin"])) {
+        next();
+      } else {
+        return res.status(403).json({
+          success: false,
+          message: "Authentication required to view this resource",
+        });
+      }
+    } catch (error) {
+      console.error("Error in requireReadAccess middleware:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  };
+};
+
 // Helper function to get resource by ID (placeholder - implement based on your models)
 const getResourceById = async (resourceType, resourceId) => {
   // This is a placeholder. You should implement this based on your actual models
@@ -315,6 +417,9 @@ module.exports = {
   requirePermission,
   requireOwnership,
   requireBusinessHours,
+  requireAdminAccess,
+  requireUserAccess,
+  requireReadAccess,
   canPerformAction,
   getEffectivePermissions,
   checkPermissionString,

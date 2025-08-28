@@ -1,62 +1,12 @@
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
-const { getJWTConfig } = require("../config/configLoader");
 const { hasPermission, hasRole } = require("./rbac");
 const {
   authenticate: basicAuth,
   optionalAuthenticate: optionalBasicAuth,
   apiKeyAuth,
 } = require("./basicAuth");
-
-// Load JWT configuration
-const loadJWTConfig = () => {
-  try {
-    return getJWTConfig();
-  } catch (error) {
-    console.error("Error loading JWT config:", error);
-    return {
-      signing_key: "your-secret-key",
-      access_token_validity: "24h",
-      refresh_token_validity: "7d",
-      issuer: "https://skillzcollab.com",
-      audience: "https://skillzcollab.com",
-      algorithm: "HS256",
-    };
-  }
-};
-
-/**
- * Enhanced JWT token verification with comprehensive error handling
- * @param {string} token - JWT token to verify
- * @returns {Object} Decoded token payload
- */
-const verifyToken = (token) => {
-  try {
-    const jwtConfig = loadJWTConfig();
-    const options = {
-      issuer: jwtConfig.issuer,
-      audience: jwtConfig.audience,
-      algorithms: [jwtConfig.algorithm],
-    };
-
-    return jwt.verify(token, jwtConfig.signing_key, options);
-  } catch (error) {
-    // Enhanced error handling for different JWT error types
-    if (error.name === "TokenExpiredError") {
-      throw new Error("TOKEN_EXPIRED");
-    } else if (error.name === "JsonWebTokenError") {
-      throw new Error("INVALID_TOKEN");
-    } else if (error.name === "NotBeforeError") {
-      throw new Error("TOKEN_NOT_ACTIVE");
-    } else if (error.name === "JWTIssuerError") {
-      throw new Error("INVALID_ISSUER");
-    } else if (error.name === "JWTAudienceError") {
-      throw new Error("INVALID_AUDIENCE");
-    } else {
-      throw new Error("TOKEN_VERIFICATION_FAILED");
-    }
-  }
-};
+const { generateToken, verifyToken } = require("../services/authService");
 
 /**
  * JWT authentication middleware
@@ -75,7 +25,7 @@ const authenticateJWT = () => {
       const decoded = verifyToken(token);
 
       // Find user by ID from token
-      const user = await User.findByPk(decoded.userId);
+      const user = await User.findByPk(decoded.id);
       if (!user) {
         return null;
       }
@@ -129,7 +79,6 @@ const sendUnauthorized = (res, message) => {
  */
 const authenticateUser = (options = {}) => {
   const {
-    allowMultipleAuth = true,
     requireVerified = true,
     checkAccountStatus = true,
     logAuthAttempts = true,
@@ -137,68 +86,69 @@ const authenticateUser = (options = {}) => {
 
   return async (req, res, next) => {
     try {
-      let authenticatedUser = null;
-      let authMethod = null;
+      // Get the authorization header
+      const authHeader = req.headers.authorization;
 
-      // Try JWT authentication first
-      const jwtUser = await authenticateJWT()(req, res, () => {});
-      if (jwtUser) {
-        authenticatedUser = jwtUser;
-        authMethod = "jwt";
+      if (!authHeader) {
+        return sendUnauthorized(res, "Authorization header required");
       }
 
-      // Try Basic Auth if JWT failed and multiple auth is allowed
-      if (!authenticatedUser && allowMultipleAuth) {
-        const basicUser = await authenticateBasic()(req, res, () => {});
-        if (basicUser) {
-          authenticatedUser = basicUser;
-          authMethod = "basic";
+      // Check if it's a Bearer token (JWT)
+      if (authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7);
+
+        try {
+          const decoded = verifyToken(token);
+
+          // Find user in database
+          const user = await User.findByPk(decoded.id);
+          if (!user) {
+            return sendUnauthorized(res, "Invalid token");
+          }
+
+          // Additional security checks
+          // Admin users can bypass verification requirement
+          if (
+            requireVerified &&
+            !user.isVerified &&
+            user.roles !== "admin" &&
+            user.roles !== "super_admin"
+          ) {
+            return res.status(403).json({
+              success: false,
+              message: "Account verification required",
+              error: "ACCOUNT_NOT_VERIFIED",
+            });
+          }
+
+          if (checkAccountStatus && !user.isActive) {
+            return res.status(403).json({
+              success: false,
+              message: "Account is deactivated",
+              error: "ACCOUNT_DEACTIVATED",
+            });
+          }
+
+          // Log authentication attempt if enabled
+          if (logAuthAttempts) {
+            console.log(
+              `Authentication successful for user ${user.id} via JWT`
+            );
+          }
+
+          // Attach user to request
+          req.user = user;
+          req.userId = user.id;
+          req.authMethod = "jwt";
+
+          return next();
+        } catch (jwtError) {
+          return sendUnauthorized(res, "Invalid or expired token");
         }
       }
 
-      // Try API Key if other methods failed and multiple auth is allowed
-      if (!authenticatedUser && allowMultipleAuth) {
-        const apiKeyUser = await authenticateApiKey()(req, res, () => {});
-        if (apiKeyUser) {
-          authenticatedUser = apiKeyUser;
-          authMethod = "api_key";
-        }
-      }
-
-      if (!authenticatedUser) {
-        return sendUnauthorized(res, "Authentication required");
-      }
-
-      // Additional security checks
-      if (requireVerified && !authenticatedUser.isVerified) {
-        return res.status(403).json({
-          success: false,
-          message: "Account verification required",
-          error: "ACCOUNT_NOT_VERIFIED",
-        });
-      }
-
-      if (checkAccountStatus && !authenticatedUser.isActive) {
-        return res.status(403).json({
-          success: false,
-          message: "Account is deactivated",
-          error: "ACCOUNT_DEACTIVATED",
-        });
-      }
-
-      // Log authentication attempt if enabled
-      if (logAuthAttempts) {
-        console.log(
-          `Authentication successful for user ${authenticatedUser.id} via ${authMethod}`
-        );
-      }
-
-      // Attach user to request
-      req.user = authenticatedUser;
-      req.userId = authenticatedUser.id;
-      req.authMethod = authMethod;
-
-      next();
+      // If not Bearer token, return unauthorized
+      return sendUnauthorized(res, "Bearer token required");
     } catch (error) {
       console.error("Authentication middleware error:", error);
       return sendUnauthorized(res, "Authentication failed");
@@ -405,33 +355,6 @@ const requireUser = () => {
  * @param {string} type - Token type ('access' or 'refresh')
  * @returns {string} JWT token
  */
-const generateToken = (user, type = "access") => {
-  try {
-    const jwtConfig = loadJWTConfig();
-    const payload = {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
-      roles: user.roles,
-      type: type,
-    };
-
-    const expiresIn =
-      type === "refresh"
-        ? jwtConfig.refresh_token_validity
-        : jwtConfig.access_token_validity;
-
-    return jwt.sign(payload, jwtConfig.signing_key, {
-      expiresIn: expiresIn,
-      issuer: jwtConfig.issuer,
-      audience: jwtConfig.audience,
-      algorithm: jwtConfig.algorithm,
-    });
-  } catch (error) {
-    console.error("Error generating JWT token:", error);
-    throw new Error("Failed to generate authentication token");
-  }
-};
 
 /**
  * Refresh JWT token
@@ -446,13 +369,27 @@ const refreshToken = async (refreshToken) => {
       throw new Error("Invalid token type");
     }
 
-    const user = await User.findByPk(decoded.userId);
+    const user = await User.findByPk(decoded.id);
     if (!user || !user.isActive) {
       throw new Error("User not found or inactive");
     }
 
-    const newAccessToken = generateToken(user, "access");
-    const newRefreshToken = generateToken(user, "refresh");
+    const newAccessToken = generateToken(
+      {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        roles: user.roles,
+      },
+      "1h"
+    );
+    const newRefreshToken = generateToken(
+      {
+        id: user.id,
+        type: "refresh",
+      },
+      "1h"
+    );
 
     return {
       accessToken: newAccessToken,

@@ -89,6 +89,14 @@ const createPortfolioByUser = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only create portfolios for themselves
+    if (user_id !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only create portfolios for yourself.",
+      });
+    }
+
     // Upload files to S3
     let files = [];
     if (uploadedFiles && uploadedFiles.length > 0) {
@@ -247,6 +255,14 @@ const updatePortfolioByUser = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only update their own portfolios
+    if (portfolio.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only update your own portfolios.",
+      });
+    }
+
     // Handle file uploads if new files are provided
     let files = portfolio.files || [];
     if (uploadedFiles && uploadedFiles.length > 0) {
@@ -330,6 +346,14 @@ const deletePortfolioByUser = async (req, res) => {
       return res.status(404).json({
         code: 404,
         message: "Portfolio not found",
+      });
+    }
+
+    // Check ownership - users can only delete their own portfolios
+    if (portfolio.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only delete your own portfolios.",
       });
     }
 

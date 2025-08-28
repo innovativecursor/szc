@@ -32,9 +32,9 @@ const verifyToken = (token) => {
   }
 };
 
-// Hash password
+// Hash password - using consistent salt rounds
 const hashPassword = async (password) => {
-  const saltRounds = 12;
+  const saltRounds = 10; // Consistent with User model
   return await bcrypt.hash(password, saltRounds);
 };
 
@@ -60,14 +60,8 @@ const registerUser = async (userData) => {
       throw new Error("User with this email or username already exists");
     }
 
-    // Hash password
-    const hashedPassword = await hashPassword(userData.password);
-
-    // Create user
-    const user = await User.create({
-      ...userData,
-      password: hashedPassword,
-    });
+    // Create user - password hashing handled by User model hooks
+    const user = await User.create(userData);
 
     // Remove password from response
     const { password, ...userWithoutPassword } = user.toJSON();
@@ -95,8 +89,16 @@ const loginUser = async (email, password) => {
       throw new Error("Account is deactivated");
     }
 
-    // Verify password
-    const isPasswordValid = await comparePassword(password, user.password);
+    // Check if user is OAuth-only (no password)
+    if (!user.password) {
+      throw new Error(
+        "This account uses OAuth authentication. Please sign in with Google."
+      );
+    }
+
+    // Verify password using User model's comparePassword method
+    const isPasswordValid = await user.comparePassword(password);
+
     if (!isPasswordValid) {
       throw new Error("Invalid credentials");
     }
@@ -109,12 +111,12 @@ const loginUser = async (email, password) => {
         username: user.username,
         roles: user.roles,
       },
-      config.auth.jwt.access_token_validity
+      "1h" // Use hardcoded value for now to ensure compatibility
     );
 
     const refreshToken = generateToken(
       { id: user.id, type: "refresh" },
-      config.auth.jwt.refresh_token_validity
+      "1h" // Use hardcoded value for now to ensure compatibility
     );
 
     // Remove password from response
@@ -124,8 +126,7 @@ const loginUser = async (email, password) => {
       user: userWithoutPassword,
       accessToken,
       refreshToken,
-      expiresAt:
-        Date.now() + parseInt(config.auth.jwt.access_token_validity) * 1000,
+      expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour in milliseconds
     };
   } catch (error) {
     throw error;
@@ -156,13 +157,12 @@ const refreshToken = async (refreshToken) => {
         username: user.username,
         roles: user.roles,
       },
-      config.auth.jwt.access_token_validity
+      "1h" // Use hardcoded value for now to ensure compatibility
     );
 
     return {
       accessToken: newAccessToken,
-      expiresAt:
-        Date.now() + parseInt(config.auth.jwt.access_token_validity) * 1000,
+      expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour in milliseconds
     };
   } catch (error) {
     throw error;
@@ -177,20 +177,14 @@ const changePassword = async (userId, currentPassword, newPassword) => {
       throw new Error("User not found");
     }
 
-    // Verify current password
-    const isCurrentPasswordValid = await comparePassword(
-      currentPassword,
-      user.password
-    );
+    // Verify current password using User model's comparePassword method
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
       throw new Error("Current password is incorrect");
     }
 
-    // Hash new password
-    const hashedNewPassword = await hashPassword(newPassword);
-
-    // Update password
-    await user.update({ password: hashedNewPassword });
+    // Update password - hashing handled by User model hooks
+    await user.update({ password: newPassword });
 
     return { message: "Password changed successfully" };
   } catch (error) {
@@ -206,11 +200,8 @@ const resetPassword = async (email, newPassword) => {
       throw new Error("User not found");
     }
 
-    // Hash new password
-    const hashedPassword = await hashPassword(newPassword);
-
-    // Update password
-    await user.update({ password: hashedPassword });
+    // Update password - hashing handled by User model hooks
+    await user.update({ password: newPassword });
 
     return { message: "Password reset successfully" };
   } catch (error) {

@@ -108,21 +108,22 @@ auth:
       wrud: [write, read, update, delete]
 
     permission_sets:
-      content_author:
-        - "brief:wrud"
-        - "creative:wrud"
-        - "portfolio:wrud"
-        - "reaction:wrud"
-        - "submission:wrud"
-        - "tag:wrud"
-
-      admin:
+      # Admin permissions - CRUD for brands, briefs, and tags
+      admin_permissions:
         - "brand:wrud"
-        - "user:wrud"
+        - "brief:wrud"
+        - "tag:wrud"
+        - "user:r" # Can view users but not modify
 
-      user:
-        - "user:wrud"
-        - "brand:r"
+      # User permissions - CRUD for submissions, portfolios, creatives, reactions
+      user_permissions:
+        - "submission:wrud"
+        - "portfolio:wrud"
+        - "creative:wrud"
+        - "reaction:wrud"
+        - "brief:r" # Can only view briefs
+        - "tag:r" # Can only view tags
+        - "brand:r" # Can only view brands
 
     roles:
       super_admin:
@@ -131,10 +132,10 @@ auth:
       admin:
         name: Admin
         inherits: [user]
-        permissions: [admin]
+        permissions: [admin_permissions]
       user:
         name: User
-        permissions: [user, content_author]
+        permissions: [user_permissions]
       auditor:
         name: Auditor
         permissions: [global_read]
@@ -177,8 +178,8 @@ auth:
     issuer: https://skillzcollab.com
     audience: https://skillzcollab.com
     algorithm: HS256
-    signing_key: your-secret-key-here # TODO: Remove this
-    verification_key: your-secret-key-here # TODO: Remove this
+    signing_key: skillzcollab-secret-key-2024 # TODO: Change this in production
+    verification_key: skillzcollab-secret-key-2024 # TODO: Change this in production
     verification_key_file: ../../ssl/cert.pem # TODO: Remove this
     verification_key_file_password: your-secret-key-here # TODO: Remove this
   basic_auth:
