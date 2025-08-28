@@ -16,23 +16,36 @@ const loadJWTConfig = () => {
   return config.auth.jwt;
 };
 
-// Generate OAuth state parameter for CSRF protection
+// Load RBAC configuration
+const loadRBACConfig = () => {
+  const config = loadConfig();
+  return config.auth.rbac;
+};
+
+// Generate random state for CSRF protection
 const generateState = () => {
   return crypto.randomBytes(32).toString("hex");
 };
 
-// Generate OAuth nonce for replay attack protection
+// Generate random nonce for replay protection
 const generateNonce = () => {
   return crypto.randomBytes(16).toString("hex");
 };
 
-// Verify OAuth state parameter
+// Verify state parameter
 const verifyState = (receivedState, storedState) => {
   return receivedState === storedState;
 };
 
+// Validate user role
+const validateRole = (role) => {
+  const rbacConfig = loadRBACConfig();
+  const validRoles = Object.keys(rbacConfig.roles);
+  return validRoles.includes(role);
+};
+
 // Generate Google OAuth authorization URL
-const generateAuthUrl = (state, nonce) => {
+const generateAuthUrl = (state, nonce, requestedRole = null) => {
   try {
     const oauthConfig = loadOAuthConfig();
 
@@ -46,6 +59,11 @@ const generateAuthUrl = (state, nonce) => {
       access_type: "offline",
       prompt: "consent",
     });
+
+    // Add role parameter if specified
+    if (requestedRole && validateRole(requestedRole)) {
+      params.append("role", requestedRole);
+    }
 
     return `${oauthConfig.auth_url}?${params.toString()}`;
   } catch (error) {
@@ -93,7 +111,11 @@ const getUserInfo = async (accessToken) => {
 };
 
 // Find or create user from OAuth data
-const findOrCreateUser = async (googleUserInfo) => {
+const findOrCreateUser = async (
+  googleUserInfo,
+  requestedRole = null,
+  adminUser = null
+) => {
   try {
     // Check if user already exists by email
     let user = await User.findOne({
@@ -108,6 +130,29 @@ const findOrCreateUser = async (googleUserInfo) => {
         profileImageURL: googleUserInfo.picture,
       });
     } else {
+      // Determine the role for new user
+      let userRole = "user"; // Default role
+
+      // If role is requested and admin is making the request
+      if (requestedRole && adminUser) {
+        const adminRoles = Array.isArray(adminUser.roles)
+          ? adminUser.roles
+          : [adminUser.roles];
+
+        // Check if admin can assign this role
+        if (adminRoles.includes("super_admin")) {
+          // Super admin can assign any role
+          if (validateRole(requestedRole)) {
+            userRole = requestedRole;
+          }
+        } else if (adminRoles.includes("admin")) {
+          // Regular admin can only assign "user" role
+          if (requestedRole === "user") {
+            userRole = requestedRole;
+          }
+        }
+      }
+
       // Create new user
       user = await User.create({
         email: googleUserInfo.email,
@@ -117,7 +162,7 @@ const findOrCreateUser = async (googleUserInfo) => {
         googleId: googleUserInfo.sub,
         isVerified: true,
         isActive: true,
-        roles: "user",
+        roles: userRole,
         password: null, // OAuth users don't need password
       });
     }
@@ -139,7 +184,7 @@ const generateUsername = (email) => {
 // Handle OAuth callback
 const handleOAuthCallback = async (req, res) => {
   try {
-    const { code, state, error } = req.query;
+    const { code, state, error, role } = req.query;
 
     if (error) {
       return res.status(400).json({
@@ -165,14 +210,24 @@ const handleOAuthCallback = async (req, res) => {
       });
     }
 
+    // Validate role if provided
+    if (role && !validateRole(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role specified",
+        error: "INVALID_ROLE",
+      });
+    }
+
     // Exchange code for token
     const tokenData = await exchangeCodeForToken(code);
 
     // Get user information
     const userInfo = await getUserInfo(tokenData.access_token);
 
-    // Find or create user
-    const user = await findOrCreateUser(userInfo);
+    // Find or create user with role (if admin is making the request)
+    const adminUser = req.session.adminUser || null; // Admin user from session if available
+    const user = await findOrCreateUser(userInfo, role, adminUser);
 
     // Generate JWT token
     const jwtConfig = loadJWTConfig();
@@ -188,6 +243,7 @@ const handleOAuthCallback = async (req, res) => {
 
     // Clear OAuth state from session
     delete req.session.oauthState;
+    delete req.session.adminUser;
 
     // Return success response
     res.json({
@@ -217,9 +273,48 @@ const handleOAuthCallback = async (req, res) => {
   }
 };
 
-// Initiate OAuth flow
+// Initiate OAuth flow with optional role specification
 const initiateOAuth = (req, res) => {
   try {
+    const { role } = req.query;
+    const adminUser = req.user; // Current authenticated user (if any)
+
+    // Validate role if provided
+    if (role && !validateRole(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role specified",
+        error: "INVALID_ROLE",
+      });
+    }
+
+    // Check if admin can assign the requested role
+    if (role && adminUser) {
+      const adminRoles = Array.isArray(adminUser.roles)
+        ? adminUser.roles
+        : [adminUser.roles];
+
+      if (adminRoles.includes("super_admin")) {
+        // Super admin can assign any role
+      } else if (adminRoles.includes("admin")) {
+        // Regular admin can only assign "user" role
+        if (role !== "user") {
+          return res.status(403).json({
+            success: false,
+            message: "You can only assign 'user' role",
+            error: "INSUFFICIENT_PERMISSIONS",
+          });
+        }
+      } else {
+        // Regular users cannot assign roles
+        return res.status(403).json({
+          success: false,
+          message: "You cannot assign roles",
+          error: "INSUFFICIENT_PERMISSIONS",
+        });
+      }
+    }
+
     // Generate state and nonce for security
     const state = generateState();
     const nonce = generateNonce();
@@ -227,14 +322,20 @@ const initiateOAuth = (req, res) => {
     // Store state in session for verification
     req.session.oauthState = state;
 
+    // Store admin user info if role assignment is requested
+    if (role && adminUser) {
+      req.session.adminUser = adminUser;
+    }
+
     // Generate authorization URL
-    const authUrl = generateAuthUrl(state, nonce);
+    const authUrl = generateAuthUrl(state, nonce, role);
 
     res.json({
       success: true,
       data: {
         authUrl: authUrl,
         state: state,
+        role: role || "user", // Default role
       },
     });
   } catch (error) {

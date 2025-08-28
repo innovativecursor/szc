@@ -179,7 +179,20 @@
       "get": {
         "tags": ["Authentication"],
         "summary": "Initiate Google OAuth",
-        "description": "Start Google OAuth authentication flow",
+        "description": "Start Google OAuth authentication flow (self-registration with default 'user' role)",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Role to assign (only works for admin users, regular users get 'user' role)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["user", "admin", "super_admin"],
+              "default": "user"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OAuth URL generated successfully",
@@ -199,10 +212,101 @@
                         },
                         "state": {
                           "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "Role that will be assigned"
                         }
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/oauth/google/admin": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Admin-initiated Google OAuth with role specification",
+        "description": "Start Google OAuth authentication flow with role assignment (Admin only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Role to assign to the new user",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["user", "admin", "super_admin"],
+              "default": "user"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OAuth URL generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "authUrl": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "Role that will be assigned"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid role specified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
                 }
               }
             }
@@ -230,6 +334,16 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Role to assign to the new user (if specified during OAuth initiation)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["user", "admin", "super_admin"]
             }
           }
         ],

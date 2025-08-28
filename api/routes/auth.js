@@ -195,6 +195,33 @@ router.get("/oauth/google", (req, res) => {
   }
 });
 
+// Admin-initiated OAuth with role specification (requires admin authentication)
+router.get("/oauth/google/admin", authenticateUser(), (req, res) => {
+  try {
+    // Check if user has admin privileges
+    const userRoles = Array.isArray(req.user.roles)
+      ? req.user.roles
+      : [req.user.roles];
+
+    if (!userRoles.includes("admin") && !userRoles.includes("super_admin")) {
+      return res.status(403).json({
+        success: false,
+        message: "Admin access required for role-based OAuth",
+        error: "INSUFFICIENT_PERMISSIONS",
+      });
+    }
+
+    initiateOAuth(req, res);
+  } catch (error) {
+    console.error("Admin OAuth initiation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to initiate admin OAuth flow",
+      error: error.message,
+    });
+  }
+});
+
 // Google OAuth Callback
 router.get("/oauth/google/callback", (req, res) => {
   try {

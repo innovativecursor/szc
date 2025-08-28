@@ -198,6 +198,16 @@ auth:
         https://www.googleapis.com/auth/userinfo.email,
         https://www.googleapis.com/auth/userinfo.profile,
       ]
+    # Role-based OAuth configuration
+    role_assignment:
+      enabled: true
+      default_role: "user"
+      admin_roles:
+        super_admin: ["user", "admin", "super_admin"] # Can assign any role
+        admin: ["user"] # Can only assign user role
+      validation:
+        require_admin_approval: true # Require admin to approve role assignment
+        allow_self_registration: true # Allow users to register themselves with default role
 
 logging:
   level: debug
