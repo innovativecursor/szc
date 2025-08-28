@@ -9,12 +9,23 @@ const config = loadConfig();
 // Generate JWT token
 const generateToken = (payload, expiresIn = "1h") => {
   const secret = config.auth.jwt.signing_key;
-  return jwt.sign(payload, secret, {
-    expiresIn,
-    issuer: config.auth.jwt.issuer,
-    audience: config.auth.jwt.audience,
-    algorithm: config.auth.jwt.algorithm,
-  });
+
+  // Build JWT options with fallbacks
+  const jwtOptions = {
+    expiresIn: expiresIn || "1h",
+    algorithm: config.auth.jwt.algorithm || "HS256",
+  };
+
+  // Only add issuer and audience if they exist
+  if (config.auth.jwt.issuer) {
+    jwtOptions.issuer = config.auth.jwt.issuer;
+  }
+
+  if (config.auth.jwt.audience) {
+    jwtOptions.audience = config.auth.jwt.audience;
+  }
+
+  return jwt.sign(payload, secret, jwtOptions);
 };
 
 // Verify JWT token
@@ -22,11 +33,22 @@ const verifyToken = (token) => {
   try {
     const secret =
       config.auth.jwt.verification_key || config.auth.jwt.signing_key;
-    return jwt.verify(token, secret, {
-      issuer: config.auth.jwt.issuer,
-      audience: config.auth.jwt.audience,
-      algorithms: [config.auth.jwt.algorithm],
-    });
+
+    // Build verify options with fallbacks
+    const verifyOptions = {
+      algorithms: [config.auth.jwt.algorithm || "HS256"],
+    };
+
+    // Only add issuer and audience if they exist
+    if (config.auth.jwt.issuer) {
+      verifyOptions.issuer = config.auth.jwt.issuer;
+    }
+
+    if (config.auth.jwt.audience) {
+      verifyOptions.audience = config.auth.jwt.audience;
+    }
+
+    return jwt.verify(token, secret, verifyOptions);
   } catch (error) {
     throw new Error("Invalid token");
   }

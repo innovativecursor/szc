@@ -18,11 +18,24 @@ const app = express();
 
 app.use(compression({ level: 9 })); // Used to compress API responses
 
-const options = {
-  credentials: true,
-  origin: ["http://localhost:3000", "http://localhost:3004"],
-};
-app.use(cors(options));
+// Allow CORS from anywhere
+app.use(
+  cors({
+    origin: "*",
+    credentials: false, // Set to false when origin is "*"
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "Cache-Control",
+      "X-File-Name",
+    ],
+    exposedHeaders: ["Content-Length", "Content-Range", "X-Total-Count"],
+  })
+);
 // Use your options object you defined above
 app.use(
   bodyParser.urlencoded({
@@ -56,10 +69,9 @@ app.use("/", routes);
 (async () => {
   try {
     await sequelize.sync({ alter: false, force: false });
-    console.log("✅ Database tables synchronized successfully.");
+    console.log("Database tables synchronized successfully.");
   } catch (error) {
-    console.error("❌ Unable to sync database:", error);
-    console.log("⚠️  Server will start but database operations may fail.");
+    console.error("Unable to sync database:", error);
   }
 })();
 

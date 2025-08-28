@@ -1,6 +1,7 @@
 const { Submission, Brief, User } = require("../models");
 const { Op } = require("sequelize");
 const { uploadMultipleFilesToS3 } = require("../services/s3Service");
+const { Reaction } = require("../models"); // Added Reaction import
 
 // Get submissions by brief ID (nested route: /briefs/{brief_id}/submissions)
 const getSubmissionsByBrief = async (req, res) => {
@@ -97,6 +98,14 @@ const createSubmissionByBrief = async (req, res) => {
       return res.status(404).json({
         code: 404,
         message: "Brief not found",
+      });
+    }
+
+    // Check if brief status allows new submissions
+    if (brief.status !== "submission") {
+      return res.status(400).json({
+        code: 400,
+        message: `Cannot create submission when brief status is "${brief.status}". Submissions are locked during review and winner selection.`,
       });
     }
 
@@ -272,6 +281,23 @@ const createSubmission = async (req, res) => {
       }
     }
 
+    // Check if brief exists and get its status
+    const brief = await Brief.findByPk(brief_id);
+    if (!brief) {
+      return res.status(404).json({
+        code: 404,
+        message: "Brief not found",
+      });
+    }
+
+    // Check if brief status allows new submissions
+    if (brief.status !== "submission") {
+      return res.status(400).json({
+        code: 400,
+        message: `Cannot create submission when brief status is "${brief.status}". Submissions are locked during review and winner selection.`,
+      });
+    }
+
     const submission = await Submission.create({
       briefId: brief_id,
       userId: user_id,
@@ -294,8 +320,7 @@ const createSubmission = async (req, res) => {
 const updateSubmission = async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, is_finalist, is_winner, files, likes, votes } =
-      req.body;
+    const { description, files } = req.body;
 
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -308,7 +333,10 @@ const updateSubmission = async (req, res) => {
       });
     }
 
-    const submission = await Submission.findByPk(id);
+    const submission = await Submission.findByPk(id, {
+      include: [{ model: Brief, as: "brief" }],
+    });
+
     if (!submission) {
       return res.status(404).json({
         code: 404,
@@ -316,12 +344,24 @@ const updateSubmission = async (req, res) => {
       });
     }
 
+    // Check ownership - users can only update their own submissions
+    if (submission.userId !== req.user.id) {
+      return res.status(403).json({
+        code: 403,
+        message: "Access denied. You can only update your own submissions.",
+      });
+    }
+
+    // Check if brief status allows editing
+    if (submission.brief && submission.brief.status !== "submission") {
+      return res.status(400).json({
+        code: 400,
+        message: `Cannot edit submission when brief status is "${submission.brief.status}". Submissions are locked during review and winner selection.`,
+      });
+    }
+
     // Update fields if provided
     if (description !== undefined) submission.description = description;
-    if (is_finalist !== undefined) submission.isFinalist = is_finalist;
-    if (is_winner !== undefined) submission.isWinner = is_winner;
-    if (likes !== undefined) submission.likes = likes;
-    if (votes !== undefined) submission.votes = votes;
 
     if (files !== undefined) {
       // Validate files structure
@@ -347,7 +387,22 @@ const updateSubmission = async (req, res) => {
     }
 
     await submission.save();
-    res.json(submission);
+
+    // Transform response to match expected API format
+    const formattedSubmission = {
+      id: submission.id,
+      created_at: submission.createdAt,
+      brief_id: submission.briefId,
+      user_id: submission.userId,
+      description: submission.description,
+      is_finalist: submission.isFinalist,
+      is_winner: submission.isWinner,
+      likes: submission.likes,
+      votes: submission.votes,
+      files: submission.files || [],
+    };
+
+    res.json(formattedSubmission);
   } catch (error) {
     console.error("Error updating submission:", error);
     res.status(500).json({ code: 500, message: "Internal server error" });
@@ -358,8 +413,7 @@ const updateSubmission = async (req, res) => {
 const updateSubmissionByBrief = async (req, res) => {
   try {
     const { brief_id, submission_id } = req.params;
-    const { description, is_finalist, is_winner, files, likes, votes } =
-      req.body;
+    const { description, files } = req.body;
 
     // Validate brief_id UUID format
     if (
@@ -385,12 +439,20 @@ const updateSubmissionByBrief = async (req, res) => {
       });
     }
 
-    // Check if brief exists
+    // Check if brief exists and get its status
     const brief = await Brief.findByPk(brief_id);
     if (!brief) {
       return res.status(404).json({
         code: 404,
         message: "Brief not found",
+      });
+    }
+
+    // Check if brief status allows editing
+    if (brief.status !== "submission") {
+      return res.status(400).json({
+        code: 400,
+        message: `Cannot edit submission when brief status is "${brief.status}". Submissions are locked during review and winner selection.`,
       });
     }
 
@@ -420,10 +482,6 @@ const updateSubmissionByBrief = async (req, res) => {
 
     // Update fields if provided
     if (description !== undefined) submission.description = description;
-    if (is_finalist !== undefined) submission.isFinalist = is_finalist;
-    if (is_winner !== undefined) submission.isWinner = is_winner;
-    if (likes !== undefined) submission.likes = likes;
-    if (votes !== undefined) submission.votes = votes;
 
     if (files !== undefined) {
       // Validate files structure
@@ -487,7 +545,9 @@ const deleteSubmission = async (req, res) => {
       });
     }
 
-    const submission = await Submission.findByPk(id);
+    const submission = await Submission.findByPk(id, {
+      include: [{ model: Reaction, as: "reactions" }],
+    });
     if (!submission) {
       return res.status(404).json({
         code: 404,
@@ -508,6 +568,13 @@ const deleteSubmission = async (req, res) => {
       return res.status(400).json({
         code: 400,
         message: "Cannot delete submitted submission",
+      });
+    }
+
+    // Explicitly delete associated reactions to ensure cleanup
+    if (submission.reactions && submission.reactions.length > 0) {
+      await Reaction.destroy({
+        where: { submissionId: id },
       });
     }
 
@@ -563,6 +630,7 @@ const deleteSubmissionByBrief = async (req, res) => {
         id: submission_id,
         briefId: brief_id,
       },
+      include: [{ model: Reaction, as: "reactions" }],
     });
 
     if (!submission) {
@@ -586,6 +654,13 @@ const deleteSubmissionByBrief = async (req, res) => {
       return res.status(400).json({
         code: 400,
         message: "Cannot delete submitted submission",
+      });
+    }
+
+    // Explicitly delete associated reactions to ensure cleanup
+    if (submission.reactions && submission.reactions.length > 0) {
+      await Reaction.destroy({
+        where: { submissionId: submission_id },
       });
     }
 

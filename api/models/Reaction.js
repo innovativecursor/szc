@@ -18,6 +18,7 @@ const Reaction = (sequelize) => {
           model: "submissions",
           key: "id",
         },
+        onDelete: "CASCADE", // Ensure reactions are deleted when submission is deleted
       },
       userId: {
         type: DataTypes.UUID,

@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "SkillzCollab API",
-    "description": "API for the SkillzCollab creative collaboration platform with comprehensive Role-Based Access Control (RBAC).\n\n## Authentication\nAll endpoints require JWT Bearer token authentication.\n\n## Role-Based Access Control\n\n### Super Admin Role\n- **Full CRUD access** to brands, briefs, and tags\n- **Full CRUD access** to all users (including admin users)\n- **Read-only access** to user content (submissions, portfolios, creatives, reactions)\n\n### Admin Role\n- **Full CRUD access** to brands, briefs, and tags\n- **CRUD access** to users with role 'user'\n- **RUD access** (Read, Update, Delete) to users with role 'admin'\n- **Cannot modify** super_admin users\n- **Read-only access** to user content (submissions, portfolios, creatives, reactions)\n\n### User Role\n- **CRUD access** to their own submissions, portfolios, creatives, and reactions\n- **Read-only access** to brands, briefs, and tags\n- **Cannot modify** other users' content\n\n### Security Features\n- All routes require authentication\n- Ownership validation for user resources\n- Role-based middleware enforcement\n- Proper error responses (401, 403, 404)",
+    "description": "API for the SkillzCollab creative collaboration platform with comprehensive Role-Based Access Control (RBAC).\n\n## Authentication\nAll endpoints require JWT Bearer token authentication.\n\n## Role-Based Access Control\n\n### Super Admin Role\n- **Full CRUD access** to brands, briefs, and tags\n- **Full CRUD access** to all users (including admin users)\n- **Read-only access** to user content (submissions, portfolios, creatives, reactions)\n\n### Admin Role\n- **Full CRUD access** to brands, briefs, and tags\n- **CRUD access** to users with role 'user'\n- **RUD access** (Read, Update, Delete) to users with role 'admin'\n- **Cannot modify** super_admin users\n- **Read-only access** to user content (submissions, portfolios, creatives, reactions)\n\n### User Role\n- **CRUD access** to their own submissions, portfolios, creatives, and reactions\n- **Read-only access** to brands, briefs, and tags\n- **Cannot modify** other users' content\n\n### Security Features\n- All routes require authentication\n- Ownership validation for user resources\n- Role-based middleware enforcement\n- Proper error responses (401, 403, 404)\n\n### Data Integrity\n- Cascade deletion: When a submission is deleted, all associated reactions are automatically removed\n- Foreign key constraints ensure referential integrity across all related entities\n- Unique constraints prevent duplicate submissions per user per brief",
     "version": "1.0.0",
     "contact": {
       "name": "SkillzCollab Team",
@@ -24,7 +24,7 @@
     }
   ],
   "paths": {
-    "/api/auth/register": {
+    "/auth/register": {
       "post": {
         "tags": ["Authentication"],
         "summary": "User registration",
@@ -114,7 +114,7 @@
       }
     },
 
-    "/api/auth/login": {
+    "/auth/login": {
       "post": {
         "tags": ["Authentication"],
         "summary": "User login",
@@ -175,7 +175,7 @@
         }
       }
     },
-    "/api/auth/oauth/google": {
+    "/auth/oauth/google": {
       "get": {
         "tags": ["Authentication"],
         "summary": "Initiate Google OAuth",
@@ -227,7 +227,7 @@
         }
       }
     },
-    "/api/auth/oauth/google/admin": {
+    "/auth/oauth/google/admin": {
       "get": {
         "tags": ["Authentication"],
         "summary": "Admin-initiated Google OAuth with role specification",
@@ -314,7 +314,7 @@
         }
       }
     },
-    "/api/auth/oauth/google/callback": {
+    "/auth/oauth/google/callback": {
       "get": {
         "tags": ["Authentication"],
         "summary": "Google OAuth callback",
@@ -371,7 +371,7 @@
         }
       }
     },
-    "/api/auth/refresh": {
+    "/auth/refresh": {
       "post": {
         "tags": ["Authentication"],
         "summary": "Refresh JWT token",
@@ -416,7 +416,7 @@
         }
       }
     },
-    "/api/auth/profile": {
+    "/auth/profile": {
       "get": {
         "tags": ["Authentication"],
         "summary": "Get user profile",
@@ -537,7 +537,7 @@
       }
     },
 
-    "/api/briefs": {
+    "/briefs": {
       "get": {
         "tags": ["Briefs"],
         "summary": "Get briefs",
@@ -621,7 +621,7 @@
         }
       }
     },
-    "/api/briefs/{id}": {
+    "/briefs/{id}": {
       "get": {
         "tags": ["Briefs"],
         "summary": "Get brief by ID",
@@ -791,7 +791,7 @@
       }
     },
 
-    "/api/brands": {
+    "/brands": {
       "get": {
         "tags": ["Brands"],
         "summary": "Get brands",
@@ -940,7 +940,7 @@
         }
       }
     },
-    "/api/brands/{id}": {
+    "/brands/{id}": {
       "get": {
         "tags": ["Brands"],
         "summary": "Get brand by ID",
@@ -1179,7 +1179,7 @@
       }
     },
 
-    "/api/brands/{id}/stats": {
+    "/brands/{id}/stats": {
       "get": {
         "tags": ["Brands"],
         "summary": "Get brand statistics",
@@ -1271,7 +1271,7 @@
       }
     },
 
-    "/api/brands/{id}/briefs": {
+    "/brands/{id}/briefs": {
       "post": {
         "tags": ["Brands"],
         "summary": "Create a new brief for a specific brand",
@@ -1386,7 +1386,7 @@
             }
           },
           "400": {
-            "description": "Bad request - validation error",
+            "description": "Bad request - validation error or brief status prevents submission",
             "content": {
               "application/json": {
                 "schema": {
@@ -1515,7 +1515,7 @@
       }
     },
 
-    "/api/tags": {
+    "/tags": {
       "get": {
         "tags": ["Tags"],
         "summary": "Get tags",
@@ -1637,7 +1637,7 @@
         }
       }
     },
-    "/api/tags/{id}": {
+    "/tags/{id}": {
       "get": {
         "tags": ["Tags"],
         "summary": "Get tag by ID",
@@ -1856,7 +1856,7 @@
       }
     },
 
-    "/api/submissions": {
+    "/submissions": {
       "get": {
         "tags": ["Submissions"],
         "summary": "Get submissions",
@@ -1937,7 +1937,7 @@
       "post": {
         "tags": ["Submissions"],
         "summary": "Create submission",
-        "description": "Create a new submission. Users can only create submissions for themselves.",
+        "description": "Create a new submission. Users can only create submissions for themselves. Submissions are only allowed when brief status is 'submission'.",
         "security": [
           {
             "BearerAuth": []
@@ -2034,7 +2034,7 @@
         }
       }
     },
-    "/api/submissions/{id}": {
+    "/submissions/{id}": {
       "get": {
         "tags": ["Submissions"],
         "summary": "Get submission by ID",
@@ -2092,7 +2092,7 @@
       "patch": {
         "tags": ["Submissions"],
         "summary": "Update submission",
-        "description": "Update a submission. Users can only update their own submissions.",
+        "description": "Update a submission. Users can only update their own submissions. Submissions can only be edited when brief status is 'submission'.",
         "security": [
           {
             "BearerAuth": []
@@ -2207,7 +2207,7 @@
       "delete": {
         "tags": ["Submissions"],
         "summary": "Delete submission",
-        "description": "Delete a submission. Users can only delete their own submissions.",
+        "description": "Delete a submission. Users can only delete their own submissions. All associated reactions are automatically deleted when a submission is deleted.",
         "security": [
           {
             "BearerAuth": []
@@ -2273,7 +2273,7 @@
       }
     },
 
-    "/api/portfolios": {
+    "/portfolios": {
       "get": {
         "tags": ["Portfolios"],
         "summary": "Get portfolios",
@@ -2413,7 +2413,7 @@
         }
       }
     },
-    "/api/portfolios/{id}": {
+    "/portfolios/{id}": {
       "get": {
         "tags": ["Portfolios"],
         "summary": "Get portfolio by ID",
@@ -2628,7 +2628,7 @@
       }
     },
 
-    "/api/creatives": {
+    "/creatives": {
       "get": {
         "tags": ["Creatives"],
         "summary": "Get creatives",
@@ -2774,7 +2774,7 @@
         }
       }
     },
-    "/api/creatives/{id}": {
+    "/creatives/{id}": {
       "get": {
         "tags": ["Creatives"],
         "summary": "Get creative by ID",
@@ -2996,7 +2996,7 @@
       }
     },
 
-    "/api/reactions": {
+    "/reactions": {
       "get": {
         "tags": ["Reactions"],
         "summary": "Get reactions",
@@ -3155,7 +3155,7 @@
         }
       }
     },
-    "/api/reactions/{id}": {
+    "/reactions/{id}": {
       "get": {
         "tags": ["Reactions"],
         "summary": "Get reaction by ID",
@@ -3365,7 +3365,7 @@
       }
     },
 
-    "/api/users": {
+    "/users": {
       "get": {
         "tags": ["Users"],
         "summary": "Get users",
@@ -3441,7 +3441,7 @@
         }
       }
     },
-    "/api/users/{id}": {
+    "/users/{id}": {
       "get": {
         "tags": ["Users"],
         "summary": "Get user by ID",
@@ -3762,7 +3762,7 @@
       "post": {
         "tags": ["Briefs", "Submissions"],
         "summary": "Create submission by brief ID",
-        "description": "Create a new submission for a specific brief. Users can only create submissions for themselves.",
+        "description": "Create a new submission for a specific brief. Users can only create submissions for themselves. Submissions are only allowed when brief status is 'submission'.",
         "security": [
           {
             "BearerAuth": []
@@ -3940,7 +3940,7 @@
       "patch": {
         "tags": ["Briefs", "Submissions"],
         "summary": "Update submission by brief ID",
-        "description": "Update a specific submission for a specific brief. Users can only update their own submissions.",
+        "description": "Update a specific submission for a specific brief. Users can only update their own submissions. Submissions can only be edited when brief status is 'submission'.",
         "security": [
           {
             "BearerAuth": []
@@ -4083,7 +4083,7 @@
       "delete": {
         "tags": ["Briefs", "Submissions"],
         "summary": "Delete submission by brief ID",
-        "description": "Delete a specific submission for a specific brief. Users can only delete their own submissions.",
+        "description": "Delete a specific submission for a specific brief. Users can only delete their own submissions. All associated reactions are automatically deleted when a submission is deleted.",
         "security": [
           {
             "BearerAuth": []

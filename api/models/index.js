@@ -31,15 +31,12 @@ const defineAssociations = () => {
   // Submission associations
   Submission.belongsTo(Brief, { foreignKey: "briefId", as: "brief" });
   Submission.belongsTo(User, { foreignKey: "userId", as: "user" });
-  Submission.belongsTo(Submission, {
-    foreignKey: "parentSubmissionId",
-    as: "parentSubmission",
+  // Users can only have one submission per brief - no revisions allowed
+  Submission.hasMany(Reaction, {
+    foreignKey: "submissionId",
+    as: "reactions",
+    onDelete: "CASCADE", // Ensure reactions are deleted when submission is deleted
   });
-  Submission.hasMany(Submission, {
-    foreignKey: "parentSubmissionId",
-    as: "revisions",
-  });
-  Submission.hasMany(Reaction, { foreignKey: "submissionId", as: "reactions" });
 
   // Reaction associations
   Reaction.belongsTo(User, { foreignKey: "userId", as: "user" });

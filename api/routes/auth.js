@@ -96,7 +96,15 @@ router.post("/register", validateRegistration, async (req, res) => {
     const user = await registerUser(userData);
 
     // Generate JWT token for immediate login
-    const token = generateToken(user, "access");
+    const token = generateToken(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        roles: user.roles,
+      },
+      "1h"
+    );
 
     res.status(201).json({
       success: true,

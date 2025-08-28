@@ -139,6 +139,14 @@ const Submission = sequelize.define(
     // Map createdAt to created_at for API response
     createdAt: "created_at",
     updatedAt: "updated_at",
+    // Ensure one submission per user per brief
+    indexes: [
+      {
+        unique: true,
+        fields: ["brief_id", "user_id"],
+        name: "unique_user_brief_submission",
+      },
+    ],
   }
 );
 
