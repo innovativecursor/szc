@@ -1,13 +1,21 @@
 const multer = require("multer");
-const { validateFileType, validateFileSize } = require("../services/s3Service");
+const { validateFileType } = require("../services/s3Service");
 
 // Configure multer for memory storage (files will be uploaded to S3)
 const storage = multer.memoryStorage();
 
-// File filter function
+// File filter function - only check file type, let multer handle size limits
 const fileFilter = (req, file, cb) => {
+  console.log("🔍 File upload attempt:", {
+    filename: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size,
+    fieldname: file.fieldname,
+  });
+
   // Check file type
   if (!validateFileType(file.mimetype)) {
+    console.log("❌ File type rejected:", file.mimetype);
     return cb(
       new Error(
         "Invalid file type. Only PNG, JPG, JPEG, and SVG files are allowed."
@@ -16,15 +24,12 @@ const fileFilter = (req, file, cb) => {
     );
   }
 
-  // Check file size (10MB limit for submissions)
-  if (!validateFileSize(file.size, 10485760)) {
-    return cb(new Error("File too large. Maximum file size is 10MB."), false);
-  }
-
+  console.log("✅ File type accepted:", file.mimetype);
+  // File size validation is handled by multer limits
   cb(null, true);
 };
 
-// Configure multer
+// Configure multer with proper limits
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,

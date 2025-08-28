@@ -45,9 +45,13 @@ app.use(
   })
 );
 
+// JSON parser with large limit
 app.use(express.json({ limit: "5120mb" }));
+
+// Remove the conflicting express.urlencoded middleware that might interfere with multipart/form-data
+// app.use(express.urlencoded({ extended: true }));
+
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 app.use(morgan("dev"));
 

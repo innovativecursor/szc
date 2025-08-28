@@ -87,6 +87,8 @@ router.post("/register", validateRegistration, async (req, res) => {
       username: req.body.username,
       email: req.body.email,
       password: req.body.password,
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
       displayName: `${req.body.firstName} ${req.body.lastName}`,
       roles: req.body.role, // Role is now mandatory
       isVerified: false, // Users need to verify their email
@@ -114,6 +116,8 @@ router.post("/register", validateRegistration, async (req, res) => {
           id: user.id,
           username: user.username,
           email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
           displayName: user.displayName,
           roles: user.roles,
           isVerified: user.isVerified,
@@ -154,8 +158,8 @@ router.post("/login", validateLogin, async (req, res) => {
       });
     }
 
-    const { email, password } = req.body;
-    const result = await loginUser(email, password);
+    const { email, password, role } = req.body;
+    const result = await loginUser(email, password, role);
 
     res.json({
       success: true,
@@ -170,6 +174,25 @@ router.post("/login", validateLogin, async (req, res) => {
         success: false,
         message: "Invalid email or password",
         error: "INVALID_CREDENTIALS",
+      });
+    }
+
+    if (error.message.includes("Multiple accounts found")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+        error: "MULTIPLE_ACCOUNTS",
+      });
+    }
+
+    if (
+      error.message.includes("No") &&
+      error.message.includes("account found")
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+        error: "ACCOUNT_NOT_FOUND",
       });
     }
 

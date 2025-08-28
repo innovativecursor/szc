@@ -376,27 +376,40 @@ const submissionResponses = {
         format: "uuid",
         example: "123e4567-e89b-12d3-a456-426614174000",
       },
-      briefId: {
+      created_at: {
+        type: "string",
+        format: "date-time",
+        example: "2024-01-15T10:30:00Z",
+      },
+      brief_id: {
         type: "string",
         format: "uuid",
         example: "123e4567-e89b-12d3-a456-426614174001",
       },
-      creativeId: {
+      user_id: {
         type: "string",
         format: "uuid",
         example: "123e4567-e89b-12d3-a456-426614174002",
-      },
-      title: {
-        type: "string",
-        example: "Modern Tech Logo Design",
       },
       description: {
         type: "string",
         example: "A clean, modern logo design that represents innovation...",
       },
-      concept: {
-        type: "string",
-        example: "The concept focuses on geometric shapes and clean lines...",
+      is_finalist: {
+        type: "boolean",
+        example: false,
+      },
+      is_winner: {
+        type: "boolean",
+        example: false,
+      },
+      likes: {
+        type: "integer",
+        example: 5,
+      },
+      votes: {
+        type: "integer",
+        example: 12,
       },
       files: {
         type: "array",
@@ -422,65 +435,36 @@ const submissionResponses = {
           },
         ],
       },
-      thumbnail: {
-        type: "string",
-        format: "uri",
-        example: "https://example.com/thumbnail.jpg",
-      },
-      status: {
-        type: "string",
-        enum: [
-          "draft",
-          "submitted",
-          "under_review",
-          "shortlisted",
-          "selected",
-          "rejected",
-          "withdrawn",
-        ],
-        example: "submitted",
-      },
-      submissionDate: {
-        type: "string",
-        format: "date-time",
-        example: "2024-01-15T10:30:00Z",
-      },
-      rating: {
-        type: "integer",
-        minimum: 1,
-        maximum: 5,
-        example: 4,
-      },
-      isFinalist: {
-        type: "boolean",
-        example: false,
-      },
-      isWinner: {
-        type: "boolean",
-        example: false,
-      },
-      tags: {
-        type: "array",
-        items: { type: "string" },
-        example: ["logo", "modern", "tech"],
-      },
-      estimatedHours: {
-        type: "integer",
-        example: 20,
-      },
-      price: {
-        type: "number",
-        example: 1200.0,
-      },
-      createdAt: {
-        type: "string",
-        format: "date-time",
-        example: "2024-01-15T10:30:00Z",
-      },
-      updatedAt: {
-        type: "string",
-        format: "date-time",
-        example: "2024-01-15T10:30:00Z",
+      user: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            example: "123e4567-e89b-12d3-a456-426614174003",
+          },
+          username: {
+            type: "string",
+            example: "john_doe",
+          },
+          email: {
+            type: "string",
+            format: "email",
+            example: "john@example.com",
+          },
+          first_name: {
+            type: "string",
+            example: "John",
+          },
+          last_name: {
+            type: "string",
+            example: "Doe",
+          },
+          display_name: {
+            type: "string",
+            example: "John Doe",
+          },
+        },
       },
     },
   },

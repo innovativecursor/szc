@@ -68,18 +68,29 @@ const comparePassword = async (password, hashedPassword) => {
 // User registration
 const registerUser = async (userData) => {
   try {
-    // Check if user already exists
+    // Check if user already exists with same email AND role
     const existingUser = await User.findOne({
       where: {
-        [require("sequelize").Op.or]: [
-          { email: userData.email },
-          { username: userData.username },
-        ],
+        email: userData.email,
+        roles: userData.roles,
       },
     });
 
     if (existingUser) {
-      throw new Error("User with this email or username already exists");
+      throw new Error(
+        `User with this email already exists for the ${userData.roles} role`
+      );
+    }
+
+    // Also check if username is already taken (username should still be unique across all roles)
+    const existingUsername = await User.findOne({
+      where: {
+        username: userData.username,
+      },
+    });
+
+    if (existingUsername) {
+      throw new Error("Username is already taken");
     }
 
     // Create user - password hashing handled by User model hooks
@@ -95,15 +106,46 @@ const registerUser = async (userData) => {
 };
 
 // User login
-const loginUser = async (email, password) => {
+const loginUser = async (email, password, role = null) => {
   try {
-    // Find user by email
-    const user = await User.findOne({
-      where: { email },
+    // Find user by email and role (if provided)
+    let whereClause = { email };
+
+    if (role) {
+      whereClause.roles = role;
+    }
+
+    let user = await User.findOne({
+      where: whereClause,
     });
 
     if (!user) {
-      throw new Error("Invalid credentials");
+      // If role was provided but user not found, give specific error
+      if (role) {
+        throw new Error(`No ${role} account found with this email`);
+      }
+
+      // If no role provided, check if multiple accounts exist with this email
+      const usersWithEmail = await User.findAll({
+        where: { email },
+        attributes: ["roles"],
+      });
+
+      if (usersWithEmail.length > 1) {
+        const roles = usersWithEmail.map((u) => u.roles).join(", ");
+        throw new Error(
+          `Multiple accounts found with this email. Please specify your role. Available roles: ${roles}`
+        );
+      } else if (usersWithEmail.length === 0) {
+        throw new Error("Invalid credentials");
+      }
+
+      // If only one account exists, use that one
+      whereClause.roles = usersWithEmail[0].roles;
+      user = await User.findOne({ where: whereClause });
+      if (!user) {
+        throw new Error("Invalid credentials");
+      }
     }
 
     // Check if account is active

@@ -18,10 +18,20 @@ const User = sequelize.define(
         len: [3, 50],
       },
     },
+    firstName: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: "first_name",
+    },
+    lastName: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: "last_name",
+    },
     email: {
       type: DataTypes.STRING(100),
       allowNull: false,
-      unique: true,
+      // Remove unique constraint - now allows same email for different roles
       validate: {
         // Custom email validation to preserve dots
         is: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
@@ -107,6 +117,14 @@ const User = sequelize.define(
   {
     tableName: "users",
     timestamps: true,
+    indexes: [
+      // Composite unique index for email + role combination
+      {
+        unique: true,
+        fields: ["email", "roles"],
+        name: "users_email_role_unique",
+      },
+    ],
     hooks: {
       beforeCreate: async (user) => {
         if (user.password) {

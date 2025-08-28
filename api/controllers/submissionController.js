@@ -35,10 +35,10 @@ const getSubmissionsByBrief = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["id", "username", "email"], // Only include necessary user fields
+          attributes: ["id", "username", "email", "firstName", "lastName"], // Include all name fields
         },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["created_at", "DESC"]], // Use the correct database field name
     });
 
     // Transform submissions to match expected API response format
@@ -53,6 +53,13 @@ const getSubmissionsByBrief = async (req, res) => {
       likes: submission.likes,
       votes: submission.votes,
       files: submission.files || [],
+      user: {
+        id: submission.user.id,
+        username: submission.user.username,
+        email: submission.user.email,
+        first_name: submission.user.firstName,
+        last_name: submission.user.lastName,
+      },
     }));
 
     res.json(formattedSubmissions);
@@ -65,6 +72,11 @@ const getSubmissionsByBrief = async (req, res) => {
 // Create new submission by brief ID (nested route: /briefs/{brief_id}/submissions)
 const createSubmissionByBrief = async (req, res) => {
   try {
+    console.log("Submission creation request received");
+    console.log("Request body:", req.body);
+    console.log("Request files:", req.files);
+    console.log("User:", req.user?.id);
+
     const { brief_id } = req.params;
     const { description } = req.body;
     const uploadedFiles = req.files; // Files uploaded via multer
@@ -74,11 +86,22 @@ const createSubmissionByBrief = async (req, res) => {
 
     // Check if files were uploaded
     if (!uploadedFiles || uploadedFiles.length === 0) {
+      console.log("❌ No files uploaded");
       return res.status(400).json({
         code: 400,
         message: "At least one file is required",
       });
     }
+
+    console.log(`✅ ${uploadedFiles.length} files received`);
+    uploadedFiles.forEach((file, index) => {
+      console.log(`📄 File ${index + 1}:`, {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        fieldname: file.fieldname,
+      });
+    });
 
     // Validate brief_id UUID format
     if (
@@ -175,7 +198,7 @@ const getSubmissions = async (req, res) => {
         { model: Brief, as: "brief" },
         { model: User, as: "user" },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["created_at", "DESC"]], // Use the correct database field name
     });
 
     res.json(submissions);
