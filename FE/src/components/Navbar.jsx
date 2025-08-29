@@ -17,6 +17,7 @@ import {
   Dashboard as DashboardIcon,
   Assignment as BriefsIcon,
   Upload as SubmissionsIcon,
+  Folder as PortfoliosIcon,
   AdminPanelSettings as AdminIcon,
   Person as ProfileIcon,
 } from "@mui/icons-material";
@@ -115,6 +116,14 @@ const Navbar = () => {
             >
               Submissions
             </Button>
+            <Button
+              color="inherit"
+              component={RouterLink}
+              to="/portfolios"
+              startIcon={<PortfoliosIcon />}
+            >
+              Portfolios
+            </Button>
             {isAdmin && (
               <Button
                 color="inherit"
@@ -212,6 +221,14 @@ const Navbar = () => {
               >
                 <SubmissionsIcon sx={{ mr: 1 }} />
                 Submissions
+              </MenuItem>
+              <MenuItem
+                component={RouterLink}
+                to="/portfolios"
+                onClick={handleMenuClose}
+              >
+                <PortfoliosIcon sx={{ mr: 1 }} />
+                Portfolios
               </MenuItem>
               {isAdmin && (
                 <MenuItem

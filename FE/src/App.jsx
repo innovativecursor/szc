@@ -16,6 +16,8 @@ import Briefs from "./pages/Briefs";
 import BriefDetail from "./pages/BriefDetail";
 import Submissions from "./pages/Submissions";
 import SubmissionDetail from "./pages/SubmissionDetail";
+import Portfolios from "./pages/Portfolios";
+import PortfolioDetail from "./pages/PortfolioDetail";
 import AdminPanel from "./pages/AdminPanel";
 import Profile from "./pages/Profile";
 
@@ -113,6 +115,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <SubmissionDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/portfolios"
+        element={
+          <ProtectedRoute>
+            <Portfolios />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/portfolios/:userId/:portfolioId"
+        element={
+          <ProtectedRoute>
+            <PortfolioDetail />
           </ProtectedRoute>
         }
       />

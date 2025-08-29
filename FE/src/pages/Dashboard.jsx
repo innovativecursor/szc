@@ -22,6 +22,7 @@ import {
   Add as AddIcon,
   TrendingUp as TrendingIcon,
   Business as BrandIcon,
+  Folder as PortfolioIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
 import { briefsAPI, submissionsAPI, reactionsAPI } from "../services/api";
@@ -266,6 +267,14 @@ const Dashboard = () => {
                   fullWidth
                 >
                   View Submissions
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<PortfolioIcon />}
+                  onClick={() => navigate("/portfolios")}
+                  fullWidth
+                >
+                  My Portfolios
                 </Button>
                 {(user?.roles === "admin" || user?.roles === "super_admin") && (
                   <>

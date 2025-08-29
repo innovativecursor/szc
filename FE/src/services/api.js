@@ -129,6 +129,107 @@ export const tagsAPI = {
   delete: (id) => api.delete(`/tags/${id}`),
 };
 
+// Portfolios API
+export const portfoliosAPI = {
+  getAll: (params) => api.get("/portfolios", { params }),
+  getByUser: (userId) => api.get(`/portfolios/users/${userId}`),
+  getById: (userId, portfolioId) =>
+    api.get(`/portfolios/users/${userId}/${portfolioId}`),
+  create: (userId, portfolioData) => {
+    const formData = new FormData();
+    Object.keys(portfolioData).forEach((key) => {
+      if (key === "files") {
+        if (portfolioData[key] && portfolioData[key].length > 0) {
+          portfolioData[key].forEach((file) => {
+            formData.append("files", file);
+          });
+        }
+      } else {
+        formData.append(key, portfolioData[key]);
+      }
+    });
+    return api.post(`/portfolios/users/${userId}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+  update: (userId, portfolioId, portfolioData) => {
+    const formData = new FormData();
+    Object.keys(portfolioData).forEach((key) => {
+      if (key === "files") {
+        if (portfolioData[key] && portfolioData[key].length > 0) {
+          portfolioData[key].forEach((file) => {
+            formData.append("files", file);
+          });
+        }
+      } else {
+        formData.append(key, portfolioData[key]);
+      }
+    });
+    return api.patch(`/portfolios/users/${userId}/${portfolioId}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+  delete: (userId, portfolioId) =>
+    api.delete(`/portfolios/users/${userId}/${portfolioId}`),
+};
+
+// Creatives API
+export const creativesAPI = {
+  getAll: (params) => api.get("/creatives", { params }),
+  getByPortfolio: (portfolioId) =>
+    api.get(`/creatives/portfolios/${portfolioId}`),
+  getById: (portfolioId, creativeId) =>
+    api.get(`/creatives/portfolios/${portfolioId}/${creativeId}`),
+  create: (portfolioId, creativeData) => {
+    const formData = new FormData();
+    Object.keys(creativeData).forEach((key) => {
+      if (key === "files") {
+        if (creativeData[key] && creativeData[key].length > 0) {
+          creativeData[key].forEach((file) => {
+            formData.append("files", file);
+          });
+        }
+      } else {
+        formData.append(key, creativeData[key]);
+      }
+    });
+    return api.post(`/creatives/portfolios/${portfolioId}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+  update: (portfolioId, creativeId, creativeData) => {
+    const formData = new FormData();
+    Object.keys(creativeData).forEach((key) => {
+      if (key === "files") {
+        if (creativeData[key] && creativeData[key].length > 0) {
+          creativeData[key].forEach((file) => {
+            formData.append("files", file);
+          });
+        }
+      } else {
+        formData.append(key, creativeData[key]);
+      }
+    });
+    return api.patch(
+      `/creatives/portfolios/${portfolioId}/${creativeId}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+  },
+  delete: (portfolioId, creativeId) =>
+    api.delete(`/creatives/portfolios/${portfolioId}/${creativeId}`),
+};
+
 // Users API
 export const usersAPI = {
   getAll: (params) => api.get("/users", { params }),
