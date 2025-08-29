@@ -1,7 +1,6 @@
-const { Submission, Brief, User } = require("../models");
+const { Submission, Brief, User, Reaction } = require("../models");
 const { Op } = require("sequelize");
 const { uploadMultipleFilesToS3 } = require("../services/s3Service");
-const { Reaction } = require("../models"); // Added Reaction import
 
 // Get submissions by brief ID (nested route: /briefs/{brief_id}/submissions)
 const getSubmissionsByBrief = async (req, res) => {
@@ -37,30 +36,43 @@ const getSubmissionsByBrief = async (req, res) => {
           as: "user",
           attributes: ["id", "username", "email", "firstName", "lastName"], // Include all name fields
         },
+        {
+          model: Reaction,
+          as: "reactions",
+          attributes: ["id", "reaction", "userId"],
+        },
       ],
       order: [["created_at", "DESC"]], // Use the correct database field name
     });
 
-    // Transform submissions to match expected API response format
-    const formattedSubmissions = submissions.map((submission) => ({
-      id: submission.id,
-      created_at: submission.createdAt,
-      brief_id: submission.briefId,
-      user_id: submission.userId,
-      description: submission.description,
-      is_finalist: submission.isFinalist,
-      is_winner: submission.isWinner,
-      likes: submission.likes,
-      votes: submission.votes,
-      files: submission.files || [],
-      user: {
-        id: submission.user.id,
-        username: submission.user.username,
-        email: submission.user.email,
-        first_name: submission.user.firstName,
-        last_name: submission.user.lastName,
-      },
-    }));
+    // Transform submissions to match expected API response format with reaction counts
+    const formattedSubmissions = submissions.map((submission) => {
+      // Count reactions by type
+      const reactions = submission.reactions || [];
+      const likeCount = reactions.filter((r) => r.reaction === "like").length;
+      const voteCount = reactions.filter((r) => r.reaction === "vote").length;
+
+      return {
+        id: submission.id,
+        created_at: submission.createdAt,
+        brief_id: submission.briefId,
+        user_id: submission.userId,
+        description: submission.description,
+        is_finalist: submission.isFinalist,
+        is_winner: submission.isWinner,
+        likes: likeCount, // Count from reactions
+        votes: voteCount, // Count from reactions
+        files: submission.files || [],
+        user: {
+          id: submission.user.id,
+          username: submission.user.username,
+          email: submission.user.email,
+          first_name: submission.user.firstName,
+          last_name: submission.user.lastName,
+        },
+        reactions: reactions, // Include all reactions for debugging/advanced use
+      };
+    });
 
     res.json(formattedSubmissions);
   } catch (error) {
@@ -197,11 +209,30 @@ const getSubmissions = async (req, res) => {
       include: [
         { model: Brief, as: "brief" },
         { model: User, as: "user" },
+        {
+          model: Reaction,
+          as: "reactions",
+          attributes: ["id", "reaction", "userId"],
+        },
       ],
       order: [["created_at", "DESC"]], // Use the correct database field name
     });
 
-    res.json(submissions);
+    // Transform submissions to include reaction counts
+    const formattedSubmissions = submissions.map((submission) => {
+      const reactions = submission.reactions || [];
+      const likeCount = reactions.filter((r) => r.reaction === "like").length;
+      const voteCount = reactions.filter((r) => r.reaction === "vote").length;
+
+      return {
+        ...submission.toJSON(),
+        likes: likeCount,
+        votes: voteCount,
+        reactions: reactions,
+      };
+    });
+
+    res.json(formattedSubmissions);
   } catch (error) {
     console.error("Error fetching submissions:", error);
     res.status(500).json({ code: 500, message: "Internal server error" });
@@ -228,6 +259,11 @@ const getSubmissionById = async (req, res) => {
       include: [
         { model: Brief, as: "brief" },
         { model: User, as: "user" },
+        {
+          model: Reaction,
+          as: "reactions",
+          attributes: ["id", "reaction", "userId"],
+        },
       ],
     });
 
@@ -777,6 +813,54 @@ const getSubmissionByBrief = async (req, res) => {
   }
 };
 
+// Get reaction counts for a specific submission
+const getSubmissionReactionCounts = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid submission ID format",
+      });
+    }
+
+    // Check if submission exists
+    const submission = await Submission.findByPk(id);
+    if (!submission) {
+      return res.status(404).json({
+        code: 404,
+        message: "Submission not found",
+      });
+    }
+
+    // Get reactions for this submission
+    const reactions = await Reaction.findAll({
+      where: { submissionId: id },
+      attributes: ["reaction"],
+    });
+
+    // Count reactions by type
+    const likeCount = reactions.filter((r) => r.reaction === "like").length;
+    const voteCount = reactions.filter((r) => r.reaction === "vote").length;
+
+    res.json({
+      submission_id: id,
+      likes: likeCount,
+      votes: voteCount,
+      total_reactions: reactions.length,
+      reactions: reactions.map((r) => r.reaction),
+    });
+  } catch (error) {
+    console.error("Error fetching submission reaction counts:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getSubmissionsByBrief,
   createSubmissionByBrief,
@@ -788,4 +872,5 @@ module.exports = {
   createSubmission,
   updateSubmission,
   deleteSubmission,
+  getSubmissionReactionCounts,
 };

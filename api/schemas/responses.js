@@ -466,6 +466,42 @@ const submissionResponses = {
           },
         },
       },
+      reactions: {
+        type: "array",
+        description: "Array of reactions (likes and votes) for this submission",
+        items: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              format: "uuid",
+              example: "123e4567-e89b-12d3-a456-426614174004",
+            },
+            reaction: {
+              type: "string",
+              enum: ["like", "vote"],
+              example: "like",
+            },
+            userId: {
+              type: "string",
+              format: "uuid",
+              example: "123e4567-e89b-12d3-a456-426614174005",
+            },
+          },
+        },
+        example: [
+          {
+            id: "123e4567-e89b-12d3-a456-426614174004",
+            reaction: "like",
+            userId: "123e4567-e89b-12d3-a456-426614174005",
+          },
+          {
+            id: "123e4567-e89b-12d3-a456-426614174006",
+            reaction: "vote",
+            userId: "123e4567-e89b-12d3-a456-426614174007",
+          },
+        ],
+      },
     },
   },
 
@@ -481,6 +517,42 @@ const submissionResponses = {
         },
       },
     ],
+  },
+
+  // Submission reaction counts
+  submissionReactionCounts: {
+    type: "object",
+    properties: {
+      submission_id: {
+        type: "string",
+        format: "uuid",
+        example: "123e4567-e89b-12d3-a456-426614174000",
+      },
+      likes: {
+        type: "integer",
+        description: "Total count of like reactions",
+        example: 5,
+      },
+      votes: {
+        type: "integer",
+        description: "Total count of vote reactions",
+        example: 12,
+      },
+      total_reactions: {
+        type: "integer",
+        description: "Total count of all reactions",
+        example: 17,
+      },
+      reactions: {
+        type: "array",
+        description: "Array of all reaction types for this submission",
+        items: {
+          type: "string",
+          enum: ["like", "vote"],
+        },
+        example: ["like", "like", "vote", "like", "vote"],
+      },
+    },
   },
 };
 

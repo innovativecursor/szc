@@ -53,8 +53,8 @@ const validateUserUpdate = [
     .withMessage("isActive must be a boolean value"),
 ];
 
-// Apply authentication middleware to all routes - don't require verification since RBAC handles permissions
-router.use(authenticateUser({ requireVerified: false }));
+// Apply authentication middleware to all routes
+router.use(authenticateUser());
 
 // GET /users - Get all users (Admin and Super Admin only)
 router.get("/", requireAdminAccess(), getUsers);

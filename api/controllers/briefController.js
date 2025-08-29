@@ -6,6 +6,62 @@ const {
   uploadBase64ImagesToS3,
 } = require("../services/s3Service");
 
+// Helper function to validate brief dates and update status
+const validateAndUpdateBriefDates = async (briefData, existingBrief = null) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day
+
+  const errors = [];
+
+  // Validate submission deadline
+  if (briefData.submissionDeadline) {
+    const submissionDeadline = new Date(briefData.submissionDeadline);
+    if (submissionDeadline <= today) {
+      errors.push("Submission deadline must be after today's date");
+    }
+  }
+
+  // Validate voting start
+  if (briefData.votingStart) {
+    const votingStart = new Date(briefData.votingStart);
+    if (votingStart < today) {
+      errors.push("Voting start date cannot be before today");
+    }
+  }
+
+  // Validate voting end
+  if (briefData.votingEnd) {
+    const votingEnd = new Date(briefData.votingEnd);
+
+    // Voting end must be after voting start
+    if (briefData.votingStart && votingEnd <= new Date(briefData.votingStart)) {
+      errors.push("Voting end date must be after voting start date");
+    }
+
+    // Voting end must not exceed submission deadline
+    if (
+      briefData.submissionDeadline &&
+      votingEnd > new Date(briefData.submissionDeadline)
+    ) {
+      errors.push("Voting end date cannot exceed submission deadline");
+    }
+  }
+
+  // If updating an existing brief, check if submission deadline has passed
+  if (existingBrief && existingBrief.submissionDeadline) {
+    const submissionDeadline = new Date(existingBrief.submissionDeadline);
+    if (submissionDeadline <= today && existingBrief.status === "submission") {
+      // Automatically change status to in_review
+      await existingBrief.update({ status: "in_review" });
+      console.log(
+        `Brief ${existingBrief.id} status automatically changed from submission to in_review`
+      );
+    }
+  }
+
+  return { errors, isValid: errors.length === 0 };
+};
+
 // Mock user for trial run (since authentication is disabled)
 const getMockUser = () => ({
   id: "00000000-0000-0000-0000-000000000000",
@@ -59,6 +115,9 @@ const getBriefs = async (req, res) => {
       whereClause.isActive = isActive === "true";
     }
 
+    // First, check and update any briefs with expired submission deadlines
+    await autoUpdateBriefStatuses();
+
     const briefs = await Brief.findAll({
       where: whereClause,
       order: [["createdAt", "DESC"]],
@@ -106,6 +165,9 @@ const getBriefById = async (req, res) => {
       });
     }
 
+    // Check if submission deadline has passed and auto-update status
+    await validateAndUpdateBriefDates({}, brief);
+
     res.status(200).json({
       code: 200,
       message: "Brief retrieved successfully",
@@ -144,6 +206,19 @@ const updateBrief = async (req, res) => {
       return res.status(404).json({
         code: 404,
         message: "Brief not found",
+      });
+    }
+
+    // Check if submission deadline has passed and auto-update status
+    await validateAndUpdateBriefDates({}, brief);
+
+    // Validate dates for the update
+    const { errors, isValid } = await validateAndUpdateBriefDates(updateData);
+    if (!isValid) {
+      return res.status(400).json({
+        code: 400,
+        message: "Date validation failed",
+        errors: errors,
       });
     }
 
@@ -344,6 +419,16 @@ const createBriefForBrand = async (req, res) => {
       });
     }
 
+    // Validate dates and update status if needed
+    const { errors, isValid } = await validateAndUpdateBriefDates(briefData);
+    if (!isValid) {
+      return res.status(400).json({
+        code: 400,
+        message: "Date validation failed",
+        errors: errors,
+      });
+    }
+
     // brand_id is automatically set from URL params - no need to validate it
     // Map request fields to model fields
     const briefModelData = {
@@ -355,7 +440,7 @@ const createBriefForBrand = async (req, res) => {
       votingStart: briefData.votingStart,
       votingEnd: briefData.votingEnd,
       winnerUserId: briefData.winnerUserId,
-      status: briefData.status || "draft",
+      status: briefData.status || "submission",
       crmUserId: briefData.crmUserId,
       brandId: brandId, // Use brand ID from URL params
       files: uploadedFiles,
@@ -551,6 +636,42 @@ const notifyTagFollowers = async (brief, tags) => {
   }
 };
 
+// Function to automatically update brief statuses
+const autoUpdateBriefStatuses = async () => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find all briefs that are in "submission" status and have submission deadline passed
+    const expiredBriefs = await Brief.findAll({
+      where: {
+        status: "submission",
+        submissionDeadline: {
+          [Op.lte]: today,
+        },
+      },
+    });
+
+    if (expiredBriefs.length > 0) {
+      console.log(
+        `Found ${expiredBriefs.length} briefs with expired submission deadlines`
+      );
+
+      for (const brief of expiredBriefs) {
+        await brief.update({ status: "in_review" });
+        console.log(
+          `Brief ${brief.id} status automatically changed from submission to in_review`
+        );
+      }
+    }
+
+    return { updated: expiredBriefs.length };
+  } catch (error) {
+    console.error("Error auto-updating brief statuses:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   createBriefForBrand,
   getBriefs,
@@ -559,4 +680,5 @@ module.exports = {
   updateBrief,
   getBriefsByTag,
   notifyTagFollowers,
+  autoUpdateBriefStatuses,
 };

@@ -35,6 +35,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { briefsAPI, submissionsAPI } from "../services/api";
 import SubmissionForm from "../components/SubmissionForm";
+import ReactionButtons from "../components/ReactionButtons";
 
 const BriefDetail = () => {
   const { id } = useParams();
@@ -340,6 +341,13 @@ const BriefDetail = () => {
                                     Files: {submission.files.length}
                                   </Typography>
                                 )}
+                              {/* Reaction Buttons */}
+                              <Box sx={{ mt: 1 }}>
+                                <ReactionButtons
+                                  submission={submission}
+                                  onReactionChange={fetchSubmissions}
+                                />
+                              </Box>
                             </Box>
                           }
                         />

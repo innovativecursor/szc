@@ -100,7 +100,12 @@ export const submissionsAPI = {
 // Reactions API
 export const reactionsAPI = {
   getAll: (params) => api.get("/reactions", { params }),
-  create: (reactionData) => api.post("/reactions", reactionData),
+  getBySubmission: (submissionId) =>
+    api.get(`/reactions/submission/${submissionId}`),
+  create: (reactionData) => {
+    const { submission_id, reaction } = reactionData;
+    return api.post(`/reactions/submission/${submission_id}`, { reaction });
+  },
   update: (id, reactionData) => api.patch(`/reactions/${id}`, reactionData),
   delete: (id) => api.delete(`/reactions/${id}`),
 };

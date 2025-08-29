@@ -10,6 +10,11 @@ router.use(authenticateUser());
 // Read operations - any authenticated user can view
 router.get("/", requireReadAccess(), submissionController.getSubmissions);
 router.get("/:id", requireReadAccess(), submissionController.getSubmissionById);
+router.get(
+  "/:id/reactions",
+  requireReadAccess(),
+  submissionController.getSubmissionReactionCounts
+);
 
 // CRUD operations - users can manage their own submissions
 router.post("/", requireUserAccess(), submissionController.createSubmission);

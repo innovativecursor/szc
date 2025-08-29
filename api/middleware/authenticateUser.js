@@ -78,11 +78,7 @@ const sendUnauthorized = (res, message) => {
  * @returns {Function} Express middleware function
  */
 const authenticateUser = (options = {}) => {
-  const {
-    requireVerified = true,
-    checkAccountStatus = true,
-    logAuthAttempts = true,
-  } = options;
+  const { checkAccountStatus = true, logAuthAttempts = true } = options;
 
   return async (req, res, next) => {
     try {
@@ -104,21 +100,6 @@ const authenticateUser = (options = {}) => {
           const user = await User.findByPk(decoded.id);
           if (!user) {
             return sendUnauthorized(res, "Invalid token");
-          }
-
-          // Additional security checks
-          // Admin users can bypass verification requirement
-          if (
-            requireVerified &&
-            !user.isVerified &&
-            user.roles !== "admin" &&
-            user.roles !== "super_admin"
-          ) {
-            return res.status(403).json({
-              success: false,
-              message: "Account verification required",
-              error: "ACCOUNT_NOT_VERIFIED",
-            });
           }
 
           if (checkAccountStatus && !user.isActive) {

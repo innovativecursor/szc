@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -16,8 +17,10 @@ import {
 import { Visibility as ViewIcon, Edit as EditIcon } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
 import { submissionsAPI } from "../services/api";
+import ReactionButtons from "../components/ReactionButtons";
 
 const Submissions = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -141,15 +144,13 @@ const Submissions = () => {
                       size="small"
                       variant="outlined"
                     />
-                    <Chip
-                      label={`${submission.likes || 0} likes`}
-                      size="small"
-                      variant="outlined"
-                    />
-                    <Chip
-                      label={`${submission.votes || 0} votes`}
-                      size="small"
-                      variant="outlined"
+                  </Box>
+
+                  {/* Reaction Buttons */}
+                  <Box sx={{ mb: 2 }}>
+                    <ReactionButtons
+                      submission={submission}
+                      onReactionChange={fetchSubmissions}
                     />
                   </Box>
 
@@ -165,6 +166,7 @@ const Submissions = () => {
                     variant="contained"
                     startIcon={<ViewIcon />}
                     fullWidth
+                    onClick={() => navigate(`/submissions/${submission.id}`)}
                   >
                     View Details
                   </Button>

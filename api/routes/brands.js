@@ -5,8 +5,8 @@ const briefController = require("../controllers/briefController");
 const { authenticateUser } = require("../middleware/authenticateUser");
 const { requireAdminAccess, requireReadAccess } = require("../middleware/rbac");
 
-// Apply authentication to all routes - don't require verification since RBAC handles permissions
-router.use(authenticateUser({ requireVerified: false }));
+// Apply authentication to all routes
+router.use(authenticateUser());
 
 // Read operations - any authenticated user can view
 router.get("/", requireReadAccess(), brandController.getBrands);

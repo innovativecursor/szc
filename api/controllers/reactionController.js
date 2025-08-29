@@ -85,7 +85,7 @@ const createReaction = async (req, res) => {
     }
 
     // Validate reaction type
-    const validReactions = ["like", "love", "wow", "haha", "sad", "angry"];
+    const validReactions = ["like", "vote"];
     if (!validReactions.includes(reaction)) {
       return res.status(400).json({
         code: 400,
@@ -113,19 +113,29 @@ const createReaction = async (req, res) => {
     });
 
     if (existingReaction) {
-      // Update existing reaction
-      existingReaction.reaction = reaction;
-      await existingReaction.save();
+      // If user is trying to add the same reaction type, remove it (toggle off)
+      if (existingReaction.reaction === reaction) {
+        await existingReaction.destroy();
+        return res.json({
+          message: "Reaction removed",
+          removed: true,
+          reaction_type: reaction,
+        });
+      } else {
+        // Update existing reaction to new type
+        existingReaction.reaction = reaction;
+        await existingReaction.save();
 
-      const formattedReaction = {
-        id: existingReaction.id,
-        created_at: existingReaction.createdAt,
-        submission_id: existingReaction.submissionId,
-        user_id: existingReaction.userId,
-        reaction: existingReaction.reaction,
-      };
+        const formattedReaction = {
+          id: existingReaction.id,
+          created_at: existingReaction.createdAt,
+          submission_id: existingReaction.submissionId,
+          user_id: existingReaction.userId,
+          reaction: existingReaction.reaction,
+        };
 
-      return res.json(formattedReaction);
+        return res.json(formattedReaction);
+      }
     }
 
     // Create new reaction
@@ -220,7 +230,7 @@ const updateReaction = async (req, res) => {
     }
 
     // Validate reaction type
-    const validReactions = ["like", "love", "wow", "haha", "sad", "angry"];
+    const validReactions = ["like", "vote"];
     if (!reaction || !validReactions.includes(reaction)) {
       return res.status(400).json({
         code: 400,

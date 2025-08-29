@@ -13,8 +13,8 @@ const {
   handleUploadError,
 } = require("../middleware/uploadMiddleware");
 
-// Apply authentication to all routes - don't require verification since RBAC handles permissions
-router.use(authenticateUser({ requireVerified: false }));
+// Apply authentication to all routes
+router.use(authenticateUser());
 
 // Read operations - any authenticated user can view
 router.get("/", requireReadAccess(), briefController.getBriefs);

@@ -30,9 +30,9 @@ const Reaction = (sequelize) => {
         },
       },
       reaction: {
-        type: DataTypes.ENUM("like", "love", "wow", "haha", "sad", "angry"),
-        allowNull: false,
-        defaultValue: "like",
+        type: DataTypes.ENUM("like", "vote"),
+        allowNull: true,
+        // defaultValue: "like",
       },
       createdAt: {
         type: DataTypes.DATE,
