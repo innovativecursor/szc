@@ -7,15 +7,26 @@ const { loadConfig } = require("./api/config/configLoader");
 const config = loadConfig();
 const port = config.server.port || 8080;
 
-const app = require("./app");
+const { app, syncDatabase } = require("./app");
 const server = http.createServer(app);
 
-server.listen(port, () => {
-  console.log(`🚀 SkillzCollab API server is running on port ${port}`);
-  console.log(`📖 API Documentation: http://localhost:${port}/swagger/`);
-  console.log(`🔍 Health Check: http://localhost:${port}/health`);
-  console.log(`🌐 Base URL: http://localhost:${port}/api`);
-});
+// Sync database tables
+syncDatabase()
+  .then(() => {
+    // Start server after database sync
+    app.listen(port, () => {
+      console.log(`SkillzCollab API server is running on port ${port}`);
+      console.log(`Health Check: http://localhost:${port}/health`);
+    });
+  })
+  .catch((error) => {
+    console.error("Failed to sync database:", error);
+    // Start server anyway
+    app.listen(port, () => {
+      console.log(`SkillzCollab API server is running on port ${port}`);
+      console.log(`Health Check: http://localhost:${port}/health`);
+    });
+  });
 
 // Handle server errors
 server.on("error", (error) => {

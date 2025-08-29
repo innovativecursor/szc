@@ -332,6 +332,44 @@ const requireUserAccess = () => {
   };
 };
 
+// Middleware to require regular user role only (excludes admin and super_admin)
+const requireRegularUserAccess = () => {
+  return (req, res, next) => {
+    try {
+      if (!req.user || !req.user.roles) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const userRoles = Array.isArray(req.user.roles)
+        ? req.user.roles
+        : [req.user.roles];
+
+      // Only regular users can access these resources (excludes admin and super_admin)
+      if (
+        hasRole(userRoles, "user") &&
+        !hasAnyRole(userRoles, ["admin", "super_admin"])
+      ) {
+        next();
+      } else {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Access denied. This resource is restricted to regular users only.",
+        });
+      }
+    } catch (error) {
+      console.error("Error in requireRegularUserAccess middleware:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  };
+};
+
 // Middleware to check if user can read a resource (for briefs, tags, brands)
 const requireReadAccess = () => {
   return (req, res, next) => {
@@ -419,6 +457,7 @@ module.exports = {
   requireBusinessHours,
   requireAdminAccess,
   requireUserAccess,
+  requireRegularUserAccess,
   requireReadAccess,
   canPerformAction,
   getEffectivePermissions,

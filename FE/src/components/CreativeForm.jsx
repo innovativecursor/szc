@@ -10,17 +10,11 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  Chip,
   IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from "@mui/material";
 import {
   CloudUpload as UploadIcon,
   Delete as DeleteIcon,
-  Add as AddIcon,
 } from "@mui/icons-material";
 import { creativesAPI } from "../services/api";
 
@@ -35,66 +29,22 @@ const CreativeForm = ({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    type: "",
-    medium: "",
-    dimensions: "",
-    year: "",
-    tags: [],
     files: [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [newTag, setNewTag] = useState("");
-
-  const creativeTypes = [
-    "Graphic Design",
-    "Photography",
-    "Illustration",
-    "Digital Art",
-    "Painting",
-    "Sculpture",
-    "Web Design",
-    "UI/UX Design",
-    "Animation",
-    "Video",
-    "Other",
-  ];
-
-  const mediums = [
-    "Digital",
-    "Oil on Canvas",
-    "Acrylic",
-    "Watercolor",
-    "Charcoal",
-    "Pencil",
-    "Mixed Media",
-    "Photography",
-    "Vector",
-    "3D",
-    "Other",
-  ];
 
   useEffect(() => {
     if (creative && isEdit) {
       setFormData({
         title: creative.title || "",
         description: creative.description || "",
-        type: creative.type || "",
-        medium: creative.medium || "",
-        dimensions: creative.dimensions || "",
-        year: creative.year || "",
-        tags: creative.tags || [],
         files: [],
       });
     } else {
       setFormData({
         title: "",
         description: "",
-        type: "",
-        medium: "",
-        dimensions: "",
-        year: "",
-        tags: [],
         files: [],
       });
     }
@@ -113,23 +63,6 @@ const CreativeForm = ({
     setFormData((prev) => ({
       ...prev,
       files: prev.files.filter((_, i) => i !== index),
-    }));
-  };
-
-  const addTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...prev.tags, newTag.trim()],
-      }));
-      setNewTag("");
-    }
-  };
-
-  const removeTag = (tagToRemove) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToRemove),
     }));
   };
 
@@ -160,11 +93,6 @@ const CreativeForm = ({
     setFormData({
       title: "",
       description: "",
-      type: "",
-      medium: "",
-      dimensions: "",
-      year: "",
-      tags: [],
       files: [],
     });
     onClose();
@@ -200,95 +128,6 @@ const CreativeForm = ({
               fullWidth
               placeholder="Describe your creative work"
             />
-
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel>Type</InputLabel>
-                <Select
-                  value={formData.type}
-                  label="Type"
-                  onChange={(e) => handleInputChange("type", e.target.value)}
-                >
-                  {creativeTypes.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl fullWidth>
-                <InputLabel>Medium</InputLabel>
-                <Select
-                  value={formData.medium}
-                  label="Medium"
-                  onChange={(e) => handleInputChange("medium", e.target.value)}
-                >
-                  {mediums.map((medium) => (
-                    <MenuItem key={medium} value={medium}>
-                      {medium}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <TextField
-                label="Dimensions"
-                value={formData.dimensions}
-                onChange={(e) =>
-                  handleInputChange("dimensions", e.target.value)
-                }
-                fullWidth
-                placeholder="e.g., 1920x1080, 11x14 inches"
-              />
-
-              <TextField
-                label="Year"
-                value={formData.year}
-                onChange={(e) => handleInputChange("year", e.target.value)}
-                fullWidth
-                placeholder="e.g., 2024"
-                inputProps={{ maxLength: 4 }}
-              />
-            </Box>
-
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>
-                Tags
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
-                <TextField
-                  size="small"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="Add a tag"
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addTag())
-                  }
-                />
-                <Button
-                  variant="outlined"
-                  onClick={addTag}
-                  startIcon={<AddIcon />}
-                  disabled={!newTag.trim()}
-                >
-                  Add
-                </Button>
-              </Box>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {formData.tags.map((tag, index) => (
-                  <Chip
-                    key={index}
-                    label={tag}
-                    onDelete={() => removeTag(tag)}
-                    color="primary"
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
-            </Box>
 
             <Box>
               <Typography variant="subtitle2" gutterBottom>

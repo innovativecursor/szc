@@ -3,7 +3,7 @@ const config = require("./config/database");
 async function checkUserColumns() {
   try {
     await config.authenticate();
-    console.log("✅ Database connection successful");
+    console.log("Database connection successful");
 
     // Check if the firstName and lastName columns exist
     const [columns] = await config.query(`
@@ -15,9 +15,9 @@ async function checkUserColumns() {
       ORDER BY COLUMN_NAME
     `);
 
-    console.log("\n📋 User name columns:");
+    console.log("\nUser name columns:");
     if (columns.length === 0) {
-      console.log("❌ No firstName or lastName columns found!");
+      console.log("No firstName or lastName columns found!");
     } else {
       console.table(columns);
     }
@@ -31,10 +31,10 @@ async function checkUserColumns() {
       ORDER BY COLUMN_NAME
     `);
 
-    console.log("\n📋 All columns in users table:");
+    console.log("\nAll columns in users table:");
     console.table(allColumns);
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error("Error:", error.message);
   } finally {
     process.exit(0);
   }

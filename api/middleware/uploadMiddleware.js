@@ -6,25 +6,16 @@ const storage = multer.memoryStorage();
 
 // File filter function - only check file type, let multer handle size limits
 const fileFilter = (req, file, cb) => {
-  console.log("🔍 File upload attempt:", {
-    filename: file.originalname,
-    mimetype: file.mimetype,
-    size: file.size,
-    fieldname: file.fieldname,
-  });
-
   // Check file type
-  if (!validateFileType(file.mimetype)) {
-    console.log("❌ File type rejected:", file.mimetype);
+  if (!allowedTypes.includes(file.mimetype)) {
+    console.log("File type rejected:", file.mimetype);
     return cb(
-      new Error(
-        "Invalid file type. Only PNG, JPG, JPEG, and SVG files are allowed."
-      ),
+      new Error(`Invalid file type. Allowed types: ${allowedTypes.join(", ")}`),
       false
     );
   }
 
-  console.log("✅ File type accepted:", file.mimetype);
+  console.log("File type accepted:", file.mimetype);
   // File size validation is handled by multer limits
   cb(null, true);
 };

@@ -1,5 +1,4 @@
 const { Portfolio, User, Creative } = require("../models");
-const { uploadMultipleFilesToS3 } = require("../services/s3Service");
 
 // Get all portfolios for a specific user
 const getPortfoliosByUser = async (req, res) => {
@@ -41,8 +40,6 @@ const getPortfoliosByUser = async (req, res) => {
       id: portfolio.id,
       title: portfolio.title,
       description: portfolio.description,
-      like_count: portfolio.likeCount,
-      files: portfolio.files || [],
       created_at: portfolio.createdAt,
       user_id: portfolio.userId,
       creatives_count: portfolio.creatives ? portfolio.creatives.length : 0,
@@ -70,7 +67,6 @@ const createPortfolioByUser = async (req, res) => {
   try {
     const { user_id } = req.params;
     const { title, description } = req.body;
-    const uploadedFiles = req.files; // Files uploaded via multer
 
     // Validate required fields
     if (!title) {
@@ -97,26 +93,11 @@ const createPortfolioByUser = async (req, res) => {
       });
     }
 
-    // Upload files to S3
-    let files = [];
-    if (uploadedFiles && uploadedFiles.length > 0) {
-      try {
-        files = await uploadMultipleFilesToS3(uploadedFiles, "portfolios");
-      } catch (uploadError) {
-        console.error("Error uploading files to S3:", uploadError);
-        return res.status(500).json({
-          code: 500,
-          message: "Failed to upload files. Please try again.",
-        });
-      }
-    }
-
     // Create the portfolio
     const portfolio = await Portfolio.create({
       userId: user_id,
       title,
       description,
-      files,
     });
 
     // Format response
@@ -124,12 +105,8 @@ const createPortfolioByUser = async (req, res) => {
       id: portfolio.id,
       title: portfolio.title,
       description: portfolio.description,
-      like_count: portfolio.likeCount,
-      files: portfolio.files || [],
       created_at: portfolio.createdAt,
       user_id: portfolio.userId,
-      creatives_count: 0,
-      creatives: [],
     };
 
     res.status(201).json(formattedPortfolio);
@@ -191,8 +168,6 @@ const getPortfolioByUser = async (req, res) => {
       id: portfolio.id,
       title: portfolio.title,
       description: portfolio.description,
-      like_count: portfolio.likeCount,
-      files: portfolio.files || [],
       created_at: portfolio.createdAt,
       user_id: portfolio.userId,
       creatives_count: portfolio.creatives ? portfolio.creatives.length : 0,
@@ -221,7 +196,6 @@ const updatePortfolioByUser = async (req, res) => {
   try {
     const { user_id, portfolio_id } = req.params;
     const { title, description } = req.body;
-    const uploadedFiles = req.files; // Files uploaded via multer
 
     // Validate parameters
     if (!user_id || !portfolio_id) {
@@ -235,7 +209,7 @@ const updatePortfolioByUser = async (req, res) => {
     const user = await User.findByPk(user_id);
     if (!user) {
       return res.status(404).json({
-        code: 404,
+        code: 400,
         message: "User not found",
       });
     }
@@ -263,30 +237,11 @@ const updatePortfolioByUser = async (req, res) => {
       });
     }
 
-    // Handle file uploads if new files are provided
-    let files = portfolio.files || [];
-    if (uploadedFiles && uploadedFiles.length > 0) {
-      try {
-        const newFiles = await uploadMultipleFilesToS3(
-          uploadedFiles,
-          "portfolios"
-        );
-        files = newFiles; // Replace existing files with new ones
-      } catch (uploadError) {
-        console.error("Error uploading files to S3:", uploadError);
-        return res.status(500).json({
-          code: 500,
-          message: "Failed to upload files. Please try again.",
-        });
-      }
-    }
-
     // Update the portfolio
     await portfolio.update({
       title: title !== undefined ? title : portfolio.title,
       description:
         description !== undefined ? description : portfolio.description,
-      files,
     });
 
     // Format response
@@ -294,12 +249,8 @@ const updatePortfolioByUser = async (req, res) => {
       id: portfolio.id,
       title: portfolio.title,
       description: portfolio.description,
-      like_count: portfolio.likeCount,
-      files: portfolio.files || [],
       created_at: portfolio.createdAt,
       user_id: portfolio.userId,
-      creatives_count: 0, // Will be updated if needed
-      creatives: [],
     };
 
     res.json(formattedPortfolio);
@@ -402,8 +353,6 @@ const getAllPortfolios = async (req, res) => {
       id: portfolio.id,
       title: portfolio.title,
       description: portfolio.description,
-      like_count: portfolio.likeCount,
-      files: portfolio.files || [],
       created_at: portfolio.createdAt,
       user_id: portfolio.userId,
       user: portfolio.user

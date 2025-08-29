@@ -2,7 +2,11 @@ const express = require("express");
 const router = express.Router();
 const creativeController = require("../controllers/creativeController");
 const { authenticateUser } = require("../middleware/authenticateUser");
-const { requireUserAccess, requireReadAccess } = require("../middleware/rbac");
+const {
+  requireUserAccess,
+  requireReadAccess,
+  requireRegularUserAccess,
+} = require("../middleware/rbac");
 const {
   handleFileUpload,
   handleUploadError,
@@ -22,10 +26,10 @@ router.get(
   creativeController.getCreativesByPortfolio
 );
 
-// POST /portfolios/{portfolio_id}/creatives - Create a new creative in a portfolio
+// POST /portfolios/{portfolio_id}/creatives - Create a new creative in a portfolio (regular users only)
 router.post(
   "/portfolios/:portfolio_id",
-  requireUserAccess(),
+  requireRegularUserAccess(),
   handleFileUpload("files", 10), // Handle up to 10 files, max 10MB each
   handleUploadError,
   creativeController.createCreativeByPortfolio
@@ -38,19 +42,19 @@ router.get(
   creativeController.getCreativeByPortfolio
 );
 
-// PATCH /portfolios/{portfolio_id}/creatives/{creative_id} - Update a creative
+// PATCH /portfolios/{portfolio_id}/creatives/{creative_id} - Update a creative (regular users only)
 router.patch(
   "/portfolios/:portfolio_id/:creative_id",
-  requireUserAccess(),
+  requireRegularUserAccess(),
   handleFileUpload("files", 10), // Handle up to 10 files, max 10MB each
   handleUploadError,
   creativeController.updateCreativeByPortfolio
 );
 
-// DELETE /portfolios/{portfolio_id}/creatives/{creative_id} - Delete a creative
+// DELETE /portfolios/{portfolio_id}/creatives/{creative_id} - Delete a creative (regular users only)
 router.delete(
   "/portfolios/:portfolio_id/:creative_id",
-  requireUserAccess(),
+  requireRegularUserAccess(),
   creativeController.deleteCreativeByPortfolio
 );
 

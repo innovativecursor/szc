@@ -2,7 +2,11 @@ const express = require("express");
 const router = express.Router();
 const reactionController = require("../controllers/reactionController");
 const { authenticateUser } = require("../middleware/authenticateUser");
-const { requireUserAccess, requireReadAccess } = require("../middleware/rbac");
+const {
+  requireUserAccess,
+  requireReadAccess,
+  requireRegularUserAccess,
+} = require("../middleware/rbac");
 
 // Apply authentication to all routes
 router.use(authenticateUser());
@@ -17,10 +21,10 @@ router.get(
   reactionController.getReactionsBySubmission
 );
 
-// Create a new reaction on a submission - users can create reactions
+// Create a new reaction on a submission - regular users only can create reactions
 router.post(
   "/submission/:submission_id",
-  requireUserAccess(),
+  requireRegularUserAccess(),
   reactionController.createReaction
 );
 
@@ -31,17 +35,17 @@ router.get(
   reactionController.getReactionById
 );
 
-// Update a reaction - users can update their own reactions
+// Update a reaction - regular users only can update their own reactions
 router.patch(
   "/:reaction_id",
-  requireUserAccess(),
+  requireRegularUserAccess(),
   reactionController.updateReaction
 );
 
-// Delete a reaction - users can delete their own reactions
+// Delete a reaction - regular users only can delete their own reactions
 router.delete(
   "/:reaction_id",
-  requireUserAccess(),
+  requireRegularUserAccess(),
   reactionController.deleteReaction
 );
 

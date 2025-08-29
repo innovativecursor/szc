@@ -10,12 +10,7 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  IconButton,
 } from "@mui/material";
-import {
-  CloudUpload as UploadIcon,
-  Delete as DeleteIcon,
-} from "@mui/icons-material";
 import { portfoliosAPI } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -30,7 +25,6 @@ const PortfolioForm = ({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    files: [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -40,31 +34,17 @@ const PortfolioForm = ({
       setFormData({
         title: portfolio.title || "",
         description: portfolio.description || "",
-        files: [],
       });
     } else {
       setFormData({
         title: "",
         description: "",
-        files: [],
       });
     }
   }, [portfolio, isEdit, open]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleFileChange = (event) => {
-    const files = Array.from(event.target.files);
-    setFormData((prev) => ({ ...prev, files: [...prev.files, ...files] }));
-  };
-
-  const removeFile = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      files: prev.files.filter((_, i) => i !== index),
-    }));
   };
 
   const handleSubmit = async (e) => {
@@ -94,7 +74,6 @@ const PortfolioForm = ({
     setFormData({
       title: "",
       description: "",
-      files: [],
     });
     onClose();
   };
@@ -131,63 +110,6 @@ const PortfolioForm = ({
               fullWidth
               placeholder="Describe your portfolio"
             />
-
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>
-                Files
-              </Typography>
-              <input
-                accept="image/*,.pdf,.doc,.docx,.psd,.ai,.sketch"
-                style={{ display: "none" }}
-                id="portfolio-files"
-                multiple
-                type="file"
-                onChange={handleFileChange}
-              />
-              <label htmlFor="portfolio-files">
-                <Button
-                  variant="outlined"
-                  component="span"
-                  startIcon={<UploadIcon />}
-                  sx={{ mb: 2 }}
-                >
-                  Upload Files
-                </Button>
-              </label>
-
-              {formData.files.length > 0 && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Selected files:
-                  </Typography>
-                  {formData.files.map((file, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        mt: 1,
-                        p: 1,
-                        border: "1px solid #e0e0e0",
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ flex: 1 }}>
-                        {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => removeFile(index)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
           </Box>
         </DialogContent>
 

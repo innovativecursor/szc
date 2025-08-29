@@ -98,16 +98,16 @@ const createSubmissionByBrief = async (req, res) => {
 
     // Check if files were uploaded
     if (!uploadedFiles || uploadedFiles.length === 0) {
-      console.log("❌ No files uploaded");
+      console.log("No files uploaded");
       return res.status(400).json({
         code: 400,
         message: "At least one file is required",
       });
     }
 
-    console.log(`✅ ${uploadedFiles.length} files received`);
+    console.log(`${uploadedFiles.length} files received`);
     uploadedFiles.forEach((file, index) => {
-      console.log(`📄 File ${index + 1}:`, {
+      console.log(`File ${index + 1}:`, {
         originalname: file.originalname,
         mimetype: file.mimetype,
         size: file.size,
@@ -144,17 +144,42 @@ const createSubmissionByBrief = async (req, res) => {
       });
     }
 
-    // Upload files to S3
-    let files;
-    try {
-      files = await uploadMultipleFilesToS3(uploadedFiles, "submissions");
-    } catch (uploadError) {
-      console.error("Error uploading files to S3:", uploadError);
-      return res.status(500).json({
-        code: 500,
-        message: "Failed to upload files. Please try again.",
+    // Check if user already has a submission for this brief
+    const existingSubmission = await Submission.findOne({
+      where: {
+        briefId: brief_id,
+        userId: user_id,
+      },
+    });
+
+    if (existingSubmission) {
+      return res.status(409).json({
+        code: 409,
+        message:
+          "You have already submitted work for this brief. You can edit your existing submission instead of creating a new one.",
+        existingSubmissionId: existingSubmission.id,
+        suggestion:
+          "Use the update endpoint to modify your existing submission",
       });
     }
+
+    // Upload files to S3
+    let files = [];
+    if (uploadedFiles && uploadedFiles.length > 0) {
+      try {
+        files = await uploadMultipleFilesToS3(uploadedFiles, "submissions");
+      } catch (uploadError) {
+        console.error("Error uploading files to S3:", uploadError);
+        return res.status(500).json({
+          code: 500,
+          message: "Failed to upload files. Please try again.",
+        });
+      }
+    } else {
+      console.log("No files uploaded");
+    }
+
+    console.log(`${uploadedFiles.length} files received`);
 
     const submission = await Submission.create({
       briefId: brief_id,
@@ -184,6 +209,31 @@ const createSubmissionByBrief = async (req, res) => {
     res.status(201).json(formattedSubmission);
   } catch (error) {
     console.error("Error creating submission:", error);
+
+    // Handle unique constraint violation (user already has submission for this brief)
+    if (
+      error.name === "SequelizeUniqueConstraintError" &&
+      error.fields &&
+      error.fields.brief_id
+    ) {
+      return res.status(409).json({
+        code: 409,
+        message:
+          "You have already submitted work for this brief. You can edit your existing submission instead of creating a new one.",
+        suggestion:
+          "Use the update endpoint to modify your existing submission",
+      });
+    }
+
+    // Handle other database errors
+    if (error.name === "SequelizeValidationError") {
+      return res.status(400).json({
+        code: 400,
+        message: "Validation error",
+        details: error.errors.map((e) => e.message),
+      });
+    }
+
     res.status(500).json({ code: 500, message: "Internal server error" });
   }
 };
@@ -235,6 +285,65 @@ const getSubmissions = async (req, res) => {
     res.json(formattedSubmissions);
   } catch (error) {
     console.error("Error fetching submissions:", error);
+    res.status(500).json({ code: 500, message: "Internal server error" });
+  }
+};
+
+// Check if user can submit to a brief (returns existing submission if any)
+const checkUserSubmissionStatus = async (req, res) => {
+  try {
+    const { brief_id } = req.params;
+    const user_id = req.user.id;
+
+    // Validate brief_id UUID format
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        brief_id
+      )
+    ) {
+      return res.status(400).json({
+        code: 400,
+        message: "Invalid brief_id format",
+      });
+    }
+
+    // Check if brief exists
+    const brief = await Brief.findByPk(brief_id);
+    if (!brief) {
+      return res.status(404).json({
+        code: 404,
+        message: "Brief not found",
+      });
+    }
+
+    // Check if user already has a submission for this brief
+    const existingSubmission = await Submission.findOne({
+      where: {
+        briefId: brief_id,
+        userId: user_id,
+      },
+    });
+
+    res.json({
+      canSubmit: !existingSubmission && brief.status === "submission",
+      briefStatus: brief.status,
+      existingSubmission: existingSubmission
+        ? {
+            id: existingSubmission.id,
+            description: existingSubmission.description,
+            files: existingSubmission.files,
+            created_at: existingSubmission.createdAt,
+            updated_at: existingSubmission.updatedAt,
+          }
+        : null,
+      message: existingSubmission
+        ? "You already have a submission for this brief. You can edit it instead."
+        : brief.status === "submission"
+          ? "You can submit work for this brief."
+          : `Submissions are not allowed when brief status is "${brief.status}".`,
+    });
+  } catch (error) {
+    console.error("Error checking user submission status:", error);
     res.status(500).json({ code: 500, message: "Internal server error" });
   }
 };
@@ -873,4 +982,5 @@ module.exports = {
   updateSubmission,
   deleteSubmission,
   getSubmissionReactionCounts,
+  checkUserSubmissionStatus,
 };

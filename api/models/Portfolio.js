@@ -20,21 +20,11 @@ const Portfolio = sequelize.define(
     },
     title: {
       type: DataTypes.STRING(200),
-      allowNull: true,
+      allowNull: false,
     },
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
-    },
-    likeCount: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-      field: "like_count",
-    },
-    files: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: [],
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -27,24 +27,10 @@ const sequelize = new Sequelize({
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ Database connection successful!");
-    console.log(
-      `📊 Connected to: ${process.env.DB_HOST || "localhost"}:${process.env.DB_PORT || 3306}/${process.env.DB_NAME || "skillzcollab"}`
-    );
+    console.log("Database connection successful!");
     return true;
   } catch (error) {
-    console.error("❌ Database connection failed:", error.message);
-    console.log("\n🔧 Quick fixes:");
-    console.log("1. Make sure MySQL is running: sudo systemctl status mysql");
-    console.log(
-      "2. Check if database exists: mysql -u root -p -e 'SHOW DATABASES;'"
-    );
-    console.log(
-      "3. Create database if needed: mysql -u root -p -e 'CREATE DATABASE IF NOT EXISTS skillzcollab;'"
-    );
-    console.log(
-      "4. Check environment variables: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME"
-    );
+    console.error("Database connection failed:", error.message);
     return false;
   }
 };

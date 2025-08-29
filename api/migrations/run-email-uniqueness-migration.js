@@ -1,77 +1,54 @@
-const { Sequelize } = require("sequelize");
-const config = require("../config/database");
+const { loadConfig } = require("../config/configLoader");
+const sequelize = require("../config/database");
 
 async function runMigration() {
   try {
-    console.log("🔄 Starting email uniqueness migration...");
+    console.log("Database connection successful");
 
-    // Test database connection
-    await config.authenticate();
-    console.log("✅ Database connection successful");
+    // Check current constraints
+    const [constraints] = await sequelize.query(
+      "SELECT CONSTRAINT_NAME, COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = 'skillzcollab' AND TABLE_NAME = 'users' AND COLUMN_NAME = 'email'"
+    );
 
-    // Check if the unique constraint on email exists
-    console.log("🔄 Checking existing constraints...");
-    const [constraints] = await config.query(`
-      SELECT CONSTRAINT_NAME 
-      FROM information_schema.TABLE_CONSTRAINTS 
-      WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'users' 
-      AND CONSTRAINT_TYPE = 'UNIQUE'
-      AND CONSTRAINT_NAME = 'users_email_key'
-    `);
+    console.log("Current email constraints:", constraints);
 
     // Remove unique constraint on email if it exists
-    if (constraints.length > 0) {
-      console.log("🔄 Removing unique constraint on email column...");
-      await config.query("ALTER TABLE users DROP INDEX users_email_key");
-      console.log("✅ Removed unique constraint on email");
-    } else {
-      console.log("ℹ️  No existing email unique constraint found");
+    for (const constraint of constraints) {
+      if (
+        constraint.CONSTRAINT_NAME.includes("UNIQUE") ||
+        constraint.CONSTRAINT_NAME.includes("unique")
+      ) {
+        await sequelize.query(
+          `ALTER TABLE users DROP INDEX ${constraint.CONSTRAINT_NAME}`
+        );
+        console.log("Removed unique constraint on email");
+      }
     }
 
-    // Check if the composite unique constraint already exists
-    const [compositeConstraints] = await config.query(`
-      SELECT CONSTRAINT_NAME 
-      FROM information_schema.TABLE_CONSTRAINTS 
-      WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'users' 
-      AND CONSTRAINT_TYPE = 'UNIQUE'
-      AND CONSTRAINT_NAME = 'users_email_role_unique'
-    `);
-
-    // Add composite unique constraint for email + roles if it doesn't exist
-    if (compositeConstraints.length === 0) {
-      console.log("🔄 Adding composite unique constraint for email + roles...");
-      await config.query(`
-        ALTER TABLE users 
-        ADD CONSTRAINT users_email_role_unique 
-        UNIQUE (email, roles)
-      `);
-      console.log("✅ Added composite unique constraint");
-    } else {
-      console.log("ℹ️  Composite unique constraint already exists");
+    if (constraints.length === 0) {
+      console.log("No existing email unique constraint found");
     }
 
-    console.log("🎉 Email uniqueness migration completed successfully!");
-    console.log("\n📋 Summary of changes:");
-    console.log("- Removed unique constraint on email column");
-    console.log(
-      "- Added composite unique constraint for email + roles combination"
-    );
-    console.log("- Users can now have the same email for different roles");
-    console.log("- Usernames remain unique across all roles");
-  } catch (error) {
-    console.error("❌ Migration failed:", error.message);
-    console.error("\n🔧 Troubleshooting tips:");
-    console.error("1. Make sure the database is running");
-    console.error("2. Check if the users table exists");
-    console.error("3. Verify database connection settings");
-    console.error("4. Check if you have sufficient permissions");
-    console.error("5. Ensure you have ALTER TABLE privileges");
-  } finally {
+    // Add composite unique constraint for email + roles
+    try {
+      await sequelize.query(
+        "ALTER TABLE users ADD CONSTRAINT users_email_role_unique UNIQUE (email, roles)"
+      );
+      console.log("Added composite unique constraint");
+    } catch (error) {
+      if (error.message.includes("Duplicate key name")) {
+        console.log("Composite unique constraint already exists");
+      } else {
+        throw error;
+      }
+    }
+
+    console.log("Migration completed successfully");
     process.exit(0);
+  } catch (error) {
+    console.error("Migration failed:", error);
+    process.exit(1);
   }
 }
 
-// Run the migration
 runMigration();

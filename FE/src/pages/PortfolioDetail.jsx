@@ -233,33 +233,6 @@ const PortfolioDetail = () => {
         </Box>
       </Box>
 
-      {/* Portfolio Files */}
-      {portfolio.files && portfolio.files.length > 0 && (
-        <Card sx={{ mb: 4 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Portfolio Files
-            </Typography>
-            <Grid container spacing={2}>
-              {portfolio.files.map((file, index) => (
-                <Grid item xs={12} sm={6} md={4} key={index}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="body2" noWrap>
-                        {file.filename}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {file.type} • {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </CardContent>
-        </Card>
-      )}
-
       <Divider sx={{ my: 4 }} />
 
       {/* Creatives Section */}
@@ -321,60 +294,9 @@ const PortfolioDetail = () => {
                       {creative.description?.length > 120 ? "..." : ""}
                     </Typography>
 
-                    <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                      {creative.type && (
-                        <Chip
-                          label={creative.type}
-                          size="small"
-                          color="secondary"
-                          variant="outlined"
-                        />
-                      )}
-                      {creative.medium && (
-                        <Chip
-                          label={creative.medium}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-
-                    <Box
-                      sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}
-                    >
-                      {creative.tags?.slice(0, 2).map((tag, index) => (
-                        <Chip
-                          key={index}
-                          label={tag}
-                          size="small"
-                          variant="outlined"
-                        />
-                      ))}
-                      {creative.tags?.length > 2 && (
-                        <Chip
-                          label={`+${creative.tags.length - 2} more`}
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
-                    </Box>
-
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        Files: {creative.files?.length || 0}
-                      </Typography>
-                      {creative.year && (
-                        <Typography variant="caption" color="text.secondary">
-                          {creative.year}
-                        </Typography>
-                      )}
-                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Files: {creative.files?.length || 0}
+                    </Typography>
                   </CardContent>
 
                   <CardActions sx={{ p: 2, pt: 0 }}>

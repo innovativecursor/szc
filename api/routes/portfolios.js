@@ -2,11 +2,11 @@ const express = require("express");
 const router = express.Router();
 const portfolioController = require("../controllers/portfolioController");
 const { authenticateUser } = require("../middleware/authenticateUser");
-const { requireUserAccess, requireReadAccess } = require("../middleware/rbac");
 const {
-  handleFileUpload,
-  handleUploadError,
-} = require("../middleware/uploadMiddleware");
+  requireUserAccess,
+  requireReadAccess,
+  requireRegularUserAccess,
+} = require("../middleware/rbac");
 
 // Apply authentication to all routes
 router.use(authenticateUser());
@@ -22,12 +22,10 @@ router.get(
   portfolioController.getPortfoliosByUser
 );
 
-// POST /users/{user_id}/portfolios - Create a new portfolio for a user
+// POST /users/{user_id}/portfolios - Create a new portfolio for a user (regular users only)
 router.post(
   "/users/:user_id",
-  requireUserAccess(),
-  handleFileUpload("files", 10), // Handle up to 10 files, max 10MB each
-  handleUploadError,
+  requireRegularUserAccess(),
   portfolioController.createPortfolioByUser
 );
 
@@ -38,19 +36,17 @@ router.get(
   portfolioController.getPortfolioByUser
 );
 
-// PATCH /users/{user_id}/portfolios/{portfolio_id} - Update a portfolio
+// PATCH /users/{user_id}/portfolios/{portfolio_id} - Update a portfolio (regular users only)
 router.patch(
   "/users/:user_id/:portfolio_id",
-  requireUserAccess(),
-  handleFileUpload("files", 10), // Handle up to 10 files, max 10MB each
-  handleUploadError,
+  requireRegularUserAccess(),
   portfolioController.updatePortfolioByUser
 );
 
-// DELETE /users/{user_id}/portfolios/{portfolio_id} - Delete a portfolio
+// DELETE /users/{user_id}/portfolios/{portfolio_id} - Delete a portfolio (regular users only)
 router.delete(
   "/users/:user_id/:portfolio_id",
-  requireUserAccess(),
+  requireRegularUserAccess(),
   portfolioController.deletePortfolioByUser
 );
 

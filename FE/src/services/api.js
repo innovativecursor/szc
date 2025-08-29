@@ -83,6 +83,8 @@ export const submissionsAPI = {
   getAll: (params) => api.get("/submissions", { params }),
   getById: (id) => api.get(`/submissions/${id}`),
   getByBriefId: (briefId) => api.get(`/briefs/${briefId}/submissions`),
+  checkSubmissionStatus: (briefId) =>
+    api.get(`/briefs/${briefId}/submission-status`),
   create: (submissionData) => {
     // Submissions are created through briefs endpoint
     const { brief_id, formData } = submissionData;
@@ -94,6 +96,8 @@ export const submissionsAPI = {
   },
   update: (id, submissionData) =>
     api.patch(`/submissions/${id}`, submissionData),
+  updateByBrief: (briefId, submissionId, submissionData) =>
+    api.patch(`/briefs/${briefId}/submissions/${submissionId}`, submissionData),
   delete: (id) => api.delete(`/submissions/${id}`),
 };
 
@@ -132,46 +136,17 @@ export const tagsAPI = {
 // Portfolios API
 export const portfoliosAPI = {
   getAll: (params) => api.get("/portfolios", { params }),
-  getByUser: (userId) => api.get(`/portfolios/users/${userId}`),
   getById: (userId, portfolioId) =>
     api.get(`/portfolios/users/${userId}/${portfolioId}`),
+  getByUser: (userId) => api.get(`/portfolios/users/${userId}`),
   create: (userId, portfolioData) => {
-    const formData = new FormData();
-    Object.keys(portfolioData).forEach((key) => {
-      if (key === "files") {
-        if (portfolioData[key] && portfolioData[key].length > 0) {
-          portfolioData[key].forEach((file) => {
-            formData.append("files", file);
-          });
-        }
-      } else {
-        formData.append(key, portfolioData[key]);
-      }
-    });
-    return api.post(`/portfolios/users/${userId}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    return api.post(`/portfolios/users/${userId}`, portfolioData);
   },
   update: (userId, portfolioId, portfolioData) => {
-    const formData = new FormData();
-    Object.keys(portfolioData).forEach((key) => {
-      if (key === "files") {
-        if (portfolioData[key] && portfolioData[key].length > 0) {
-          portfolioData[key].forEach((file) => {
-            formData.append("files", file);
-          });
-        }
-      } else {
-        formData.append(key, portfolioData[key]);
-      }
-    });
-    return api.patch(`/portfolios/users/${userId}/${portfolioId}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    return api.patch(
+      `/portfolios/users/${userId}/${portfolioId}`,
+      portfolioData
+    );
   },
   delete: (userId, portfolioId) =>
     api.delete(`/portfolios/users/${userId}/${portfolioId}`),

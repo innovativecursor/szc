@@ -3701,6 +3701,105 @@
       }
     },
 
+    "/briefs/{brief_id}/submission-status": {
+      "get": {
+        "tags": ["Briefs", "Submissions"],
+        "summary": "Check user submission status for a brief",
+        "description": "Check if the authenticated user can submit to a brief and get their existing submission if any. Users can only check their own submission status.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "brief_id",
+            "in": "path",
+            "required": true,
+            "description": "Brief ID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User submission status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "canSubmit": {
+                      "type": "boolean",
+                      "description": "Whether the user can submit to this brief"
+                    },
+                    "briefStatus": {
+                      "type": "string",
+                      "description": "Current status of the brief"
+                    },
+                    "existingSubmission": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "User's existing submission if any",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Human-readable message about submission status"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid brief_id format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Brief not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
     "/briefs/{brief_id}/submissions": {
       "get": {
         "tags": ["Briefs", "Submissions"],
@@ -3762,7 +3861,7 @@
       "post": {
         "tags": ["Briefs", "Submissions"],
         "summary": "Create submission by brief ID",
-        "description": "Create a new submission for a specific brief. Users can only create submissions for themselves. Submissions are only allowed when brief status is 'submission'.",
+        "description": "Create a new submission for a specific brief. Users can only create submissions for themselves and are limited to one submission per brief. Submissions are only allowed when brief status is 'submission'. If a user already has a submission, they should use the update endpoint instead.",
         "security": [
           {
             "BearerAuth": []
@@ -3854,6 +3953,35 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User already has a submission for this brief",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 409
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "You have already submitted work for this brief. You can edit your existing submission instead of creating a new one."
+                    },
+                    "existingSubmissionId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "ID of the existing submission"
+                    },
+                    "suggestion": {
+                      "type": "string",
+                      "example": "Use the update endpoint to modify your existing submission"
+                    }
+                  }
                 }
               }
             }

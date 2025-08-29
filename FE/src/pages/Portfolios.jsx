@@ -192,9 +192,14 @@ const Portfolios = () => {
                     {portfolio.description?.length > 120 ? "..." : ""}
                   </Typography>
 
-                  <Typography variant="caption" color="text.secondary">
-                    Files: {portfolio.files?.length || 0}
-                  </Typography>
+                  <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+                    <Chip
+                      size="small"
+                      label={`${portfolio.creatives_count || 0} creatives`}
+                      color="primary"
+                      variant="outlined"
+                    />
+                  </Box>
                 </CardContent>
 
                 <CardActions sx={{ p: 2, pt: 0 }}>

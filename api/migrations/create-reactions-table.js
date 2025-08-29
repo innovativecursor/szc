@@ -1,83 +1,47 @@
-const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
 
-module.exports = {
-  up: async (queryInterface, Sequelize) => {
-    try {
-      // Create reactions table
-      await queryInterface.createTable("reactions", {
-        id: {
-          type: DataTypes.CHAR(36),
-          primaryKey: true,
-          allowNull: false,
-        },
-        submission_id: {
-          type: DataTypes.CHAR(36),
-          allowNull: false,
-          references: {
-            model: "submissions",
-            key: "id",
-          },
-          onUpdate: "CASCADE",
-          onDelete: "CASCADE",
-        },
-        user_id: {
-          type: DataTypes.CHAR(36),
-          allowNull: false,
-          references: {
-            model: "users",
-            key: "id",
-          },
-          onUpdate: "CASCADE",
-          onDelete: "CASCADE",
-        },
-        reaction: {
-          type: DataTypes.ENUM("like", "love", "wow", "haha", "sad", "angry"),
-          allowNull: false,
-          defaultValue: "like",
-        },
-        created_at: {
-          type: DataTypes.DATE,
-          allowNull: false,
-          defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
-        },
-        updated_at: {
-          type: DataTypes.DATE,
-          allowNull: false,
-          defaultValue: Sequelize.literal(
-            "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
-          ),
-        },
-      });
+async function up() {
+  try {
+    await sequelize.query(`
+      CREATE TABLE reactions (
+        id VARCHAR(36) PRIMARY KEY,
+        submission_id VARCHAR(36) NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        reaction ENUM('like', 'vote') NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_user_submission_reaction (user_id, submission_id, reaction)
+      )
+    `);
+    console.log("Successfully created reactions table with indexes");
+  } catch (error) {
+    console.error("Error creating reactions table:", error);
+    throw error;
+  }
+}
 
-      // Add indexes
-      await queryInterface.addIndex("reactions", ["submission_id", "user_id"], {
-        unique: true,
-        name: "unique_user_submission_reaction",
-      });
+async function down() {
+  try {
+    await sequelize.query("DROP TABLE IF EXISTS reactions");
+    console.log("Successfully dropped reactions table");
+  } catch (error) {
+    console.error("Error dropping reactions table:", error);
+    throw error;
+  }
+}
 
-      await queryInterface.addIndex("reactions", ["submission_id"], {
-        name: "idx_reactions_submission_id",
-      });
+if (require.main === module) {
+  up()
+    .then(() => {
+      console.log("Migration completed successfully");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("Migration failed:", error);
+      process.exit(1);
+    });
+}
 
-      await queryInterface.addIndex("reactions", ["user_id"], {
-        name: "idx_reactions_user_id",
-      });
-
-      console.log("✅ Successfully created reactions table with indexes");
-    } catch (error) {
-      console.error("❌ Error creating reactions table:", error);
-      throw error;
-    }
-  },
-
-  down: async (queryInterface, Sequelize) => {
-    try {
-      // Drop reactions table
-      await queryInterface.dropTable("reactions");
-      console.log("✅ Successfully dropped reactions table");
-    } catch (error) {
-      console.error("❌ Error dropping reactions table:", error);
-      throw error;
-    }
-  },
-};
+module.exports = { up, down };

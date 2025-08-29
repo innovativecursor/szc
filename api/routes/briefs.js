@@ -30,6 +30,11 @@ router.get(
   requireReadAccess(),
   submissionController.getSubmissionsByBrief
 );
+router.get(
+  "/:brief_id/submission-status",
+  requireUserAccess(),
+  submissionController.checkUserSubmissionStatus
+);
 router.post(
   "/:brief_id/submissions",
   requireUserAccess(),

@@ -69,23 +69,15 @@ app.use(
 // simple route
 app.use("/", routes);
 
-// Test database connection and sync models
-(async () => {
+// Database sync function
+const syncDatabase = async () => {
   try {
-    // Test connection first
-    const { testConnection } = require("./api/config/database");
-    const isConnected = await testConnection();
-
-    if (isConnected) {
-      // Only sync if connection is successful
-      await sequelize.sync({ alter: false, force: false });
-      console.log("✅ Database tables synchronized successfully.");
-    } else {
-      console.log("⚠️  Skipping database sync due to connection failure");
-    }
+    await sequelize.sync({ alter: true });
+    console.log("Database tables synchronized successfully.");
   } catch (error) {
-    console.error("❌ Database sync error:", error.message);
+    console.log("Skipping database sync due to connection failure");
   }
-})();
+};
 
-module.exports = app;
+// Export both the app and the sync function
+module.exports = { app, syncDatabase };
