@@ -19,6 +19,8 @@ const {
   handleOAuthCallback,
   handleLogout: handleOAuthLogout,
 } = require("../middleware/googleOAuth");
+const axios = require("axios"); // Added axios for Google OAuth authentication
+const User = require("../models/User"); // Added User model for Google OAuth
 
 // Validation middleware
 const validateRegistration = [
@@ -266,6 +268,133 @@ router.get("/oauth/google/callback", (req, res) => {
     });
   }
 });
+
+// OAuth Callback (alternative route to match Google OAuth redirect URL)
+router.get("/callback", (req, res) => {
+  try {
+    handleOAuthCallback(req, res);
+  } catch (error) {
+    console.error("OAuth callback error:", error);
+    res.status(500).json({
+      success: false,
+      message: "OAuth authentication failed",
+      error: error.message,
+    });
+  }
+});
+
+// Google OAuth Authentication (for frontend Google OAuth)
+router.post("/google", async (req, res) => {
+  try {
+    const { accessToken, role = "user" } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Access token is required",
+        error: "MISSING_ACCESS_TOKEN",
+      });
+    }
+
+    // Get user info from Google using the access token
+    const userInfoResponse = await axios.get(
+      "https://www.googleapis.com/oauth2/v3/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (!userInfoResponse.data) {
+      return res.status(400).json({
+        success: false,
+        message: "Failed to get user info from Google",
+        error: "GOOGLE_USER_INFO_FAILED",
+      });
+    }
+
+    const googleUserInfo = userInfoResponse.data;
+
+    // Find or create user in database
+    let user = await User.findOne({
+      where: { email: googleUserInfo.email },
+    });
+
+    if (user) {
+      // Update existing user's Google info
+      await user.update({
+        lastLogin: new Date(),
+        googleId: googleUserInfo.sub,
+        profileImageURL: googleUserInfo.picture,
+        displayName: googleUserInfo.name,
+      });
+    } else {
+      // Create new user
+      const username = generateUsername(googleUserInfo.email);
+
+      user = await User.create({
+        email: googleUserInfo.email,
+        username: username,
+        displayName: googleUserInfo.name,
+        firstName: googleUserInfo.given_name || "",
+        lastName: googleUserInfo.family_name || "",
+        profileImageURL: googleUserInfo.picture,
+        googleId: googleUserInfo.sub,
+        isVerified: true, // Google users are pre-verified
+        isActive: true,
+        roles: role,
+        password: null, // OAuth users don't need password
+      });
+    }
+
+    // Generate JWT token
+    const token = generateToken(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        roles: user.roles,
+      },
+      "1h"
+    );
+
+    // Return success response with user data and token
+    res.json({
+      success: true,
+      message: "Google OAuth authentication successful",
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          displayName: user.displayName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageURL: user.profileImageURL,
+          roles: user.roles,
+          isVerified: user.isVerified,
+        },
+        accessToken: token,
+        expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
+      },
+    });
+  } catch (error) {
+    console.error("Google OAuth authentication error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Google OAuth authentication failed",
+      error: error.message,
+    });
+  }
+});
+
+// Helper function to generate unique username
+const generateUsername = (email) => {
+  const baseUsername = email.split("@")[0];
+  const timestamp = Date.now().toString().slice(-4);
+  return `${baseUsername}_${timestamp}`;
+};
 
 // Refresh JWT Token
 router.post("/refresh", async (req, res) => {

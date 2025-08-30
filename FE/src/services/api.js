@@ -63,6 +63,20 @@ export const authAPI = {
   login: (credentials) => api.post("/auth/login", credentials),
   getProfile: () => api.get("/auth/profile"),
   updateProfile: (profileData) => api.put("/auth/profile", profileData),
+  // OAuth endpoints
+  initiateGoogleOAuth: (role = null) => {
+    const params = role ? { role } : {};
+    return api.get("/auth/oauth/google", { params });
+  },
+  initiateAdminGoogleOAuth: (role) => {
+    return api.get("/auth/oauth/google/admin", { params: { role } });
+  },
+  // New Google OAuth endpoint for frontend OAuth
+  authenticateGoogleOAuth: (accessToken, role = "user") => {
+    return api.post("/auth/google", { accessToken, role });
+  },
+  verifyOTP: (otpData) => api.post("/auth/verify-otp", otpData),
+  resendOTP: (emailData) => api.post("/auth/resend-otp", emailData),
 };
 
 // Briefs API

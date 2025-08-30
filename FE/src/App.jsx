@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Navbar from "./components/Navbar";
 import Login from "./pages/Login";
@@ -20,6 +21,7 @@ import Portfolios from "./pages/Portfolios";
 import PortfolioDetail from "./pages/PortfolioDetail";
 import AdminPanel from "./pages/AdminPanel";
 import Profile from "./pages/Profile";
+import OAuthCallback from "./pages/OAuthCallback";
 
 // Create theme
 const theme = createTheme({
@@ -66,6 +68,8 @@ const AppRoutes = () => {
           !isAuthenticated ? <Register /> : <Navigate to="/dashboard" replace />
         }
       />
+
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
 
       <Route
         path="/"
@@ -161,17 +165,19 @@ const AppRoutes = () => {
 // Main App component
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <div className="App">
-            <Navbar />
-            <AppRoutes />
-          </div>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+    <GoogleOAuthProvider clientId="1022476623857-t50qf3ing7kdar5scavab91t2du74ki5.apps.googleusercontent.com">
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <Router>
+            <div className="App">
+              <Navbar />
+              <AppRoutes />
+            </div>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+    </GoogleOAuthProvider>
   );
 }
 

@@ -8,6 +8,7 @@ const routes = require("./api/routes");
 // const path = require("path");
 const cors = require("cors");
 var cookieParser = require("cookie-parser");
+const session = require("express-session");
 const sequelize = require("./api/config/database");
 const compression = require("compression"); // Add this line
 const swaggerUi = require("swagger-ui-express");
@@ -36,6 +37,21 @@ app.use(
     exposedHeaders: ["Content-Length", "Content-Range", "X-Total-Count"],
   })
 );
+
+// Session middleware for OAuth state management
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "skillzcollab-oauth-secret-2024",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
 // Use your options object you defined above
 app.use(
   bodyParser.urlencoded({

@@ -114,6 +114,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const handleGoogleOAuthSuccess = (userData, token) => {
+    // Store token in localStorage
+    localStorage.setItem("accessToken", token);
+
+    // Set user and authentication state
+    setUser(userData);
+    setIsAuthenticated(true);
+
+    return { success: true };
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -122,6 +133,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
+    handleGoogleOAuthSuccess,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

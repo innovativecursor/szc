@@ -191,7 +191,7 @@ auth:
       device_auth_url: https://oauth2.googleapis.com/device/code
     client_id: 412636201034-s4porsarek2cijevrb58un9qbmt7u5e3.apps.googleusercontent.com
     secret: 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
-    redirect_url: http://localhost:8080/api/v1/auth/callback
+    redirect_url: http://localhost:8080/api/auth/callback
     userinfo_url: https://www.googleapis.com/oauth2/v3/userinfo
     scopes:
       [

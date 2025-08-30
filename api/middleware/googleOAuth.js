@@ -7,7 +7,19 @@ const { loadConfig } = require("../config/configLoader");
 // Load OAuth configuration
 const loadOAuthConfig = () => {
   const config = loadConfig();
-  return config.auth.oauth;
+  const oauthConfig = config.auth.oauth;
+
+  // Extract URLs from the nested structure
+  return {
+    client_id: oauthConfig.client_id,
+    secret: oauthConfig.secret,
+    redirect_url: oauthConfig.redirect_url,
+    userinfo_url: oauthConfig.userinfo_url,
+    scopes: oauthConfig.scopes,
+    auth_url: oauthConfig.server_token_endpoint_url.auth_url,
+    token_url: oauthConfig.server_token_endpoint_url.token_url,
+    device_auth_url: oauthConfig.server_token_endpoint_url.device_auth_url,
+  };
 };
 
 // Load JWT configuration
@@ -187,36 +199,31 @@ const handleOAuthCallback = async (req, res) => {
     const { code, state, error, role } = req.query;
 
     if (error) {
-      return res.status(400).json({
-        success: false,
-        message: "OAuth authorization failed",
-        error: error,
-      });
+      // Redirect to frontend with error
+      return res.redirect(
+        `${process.env.FRONTEND_URL || "http://localhost:3000"}/oauth/callback?error=${encodeURIComponent(error)}`
+      );
     }
 
     if (!code || !state) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing authorization code or state",
-      });
+      return res.redirect(
+        `${process.env.FRONTEND_URL || "http://localhost:3000"}/oauth/callback?error=${encodeURIComponent("Missing authorization code or state")}`
+      );
     }
 
     // Verify state parameter (should be stored in session)
     const storedState = req.session.oauthState;
     if (!storedState || !verifyState(state, storedState)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid state parameter",
-      });
+      return res.redirect(
+        `${process.env.FRONTEND_URL || "http://localhost:3000"}/oauth/callback?error=${encodeURIComponent("Invalid state parameter")}`
+      );
     }
 
     // Validate role if provided
     if (role && !validateRole(role)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid role specified",
-        error: "INVALID_ROLE",
-      });
+      return res.redirect(
+        `${process.env.FRONTEND_URL || "http://localhost:3000"}/oauth/callback?error=${encodeURIComponent("Invalid role specified")}`
+      );
     }
 
     // Exchange code for token
@@ -245,31 +252,32 @@ const handleOAuthCallback = async (req, res) => {
     delete req.session.oauthState;
     delete req.session.adminUser;
 
-    // Return success response
-    res.json({
-      success: true,
-      message: "OAuth authentication successful",
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          displayName: user.displayName,
-          profileImageURL: user.profileImageURL,
-          roles: user.roles,
-        },
-        token: token,
-        expiresAt:
-          Date.now() + parseInt(jwtConfig.access_token_validity) * 1000,
-      },
+    // Redirect to frontend with success and token
+    const successParams = new URLSearchParams({
+      success: "true",
+      token: token,
+      userId: user.id,
+      email: user.email,
+      username: user.username,
+      roles: Array.isArray(user.roles) ? user.roles.join(",") : user.roles,
+      displayName: user.displayName || "",
+      profileImageURL: user.profileImageURL || "",
     });
+
+    return res.redirect(
+      `${process.env.FRONTEND_URL || "http://localhost:3000"}/oauth/callback?${successParams.toString()}`
+    );
   } catch (error) {
     console.error("OAuth callback error:", error);
-    res.status(500).json({
-      success: false,
-      message: "OAuth authentication failed",
-      error: error.message,
+
+    const errorParams = new URLSearchParams({
+      error: "OAuth authentication failed",
+      details: error.message,
     });
+
+    return res.redirect(
+      `${process.env.FRONTEND_URL || "http://localhost:3000"}/oauth/callback?${errorParams.toString()}`
+    );
   }
 };
 
@@ -400,6 +408,7 @@ const getOAuthStatus = () => {
 };
 
 module.exports = {
+  loadOAuthConfig,
   generateAuthUrl,
   exchangeCodeForToken,
   getUserInfo,

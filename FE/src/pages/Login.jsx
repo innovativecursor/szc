@@ -21,6 +21,7 @@ import {
   AdminPanelSettings as AdminIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
+import GoogleOAuthButton from "../components/GoogleOAuthButton";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -220,6 +221,28 @@ const Login = () => {
             >
               {loading ? "Signing In..." : "Sign In"}
             </Button>
+          </Box>
+
+          <Divider sx={{ my: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              OR
+            </Typography>
+          </Divider>
+
+          <Box sx={{ textAlign: "center", mb: 3 }}>
+            <GoogleOAuthButton
+              variant="outlined"
+              size="large"
+              fullWidth
+              role={formData.role}
+              onError={(errorMessage) => {
+                setAlert({
+                  show: true,
+                  message: errorMessage,
+                  severity: "error",
+                });
+              }}
+            />
           </Box>
 
           <Divider sx={{ my: 3 }}>
