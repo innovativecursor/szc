@@ -158,6 +158,38 @@ const userResponses = {
         format: "date-time",
         example: "2024-01-15T10:30:00Z",
       },
+      followedTags: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+          },
+        },
+        example: [
+          { id: "3fa85f64-5717-4562-b3fc-2c963f66afa6", name: "logo" },
+          { id: "4fa85f64-5717-4562-b3fc-2c963f66afa7", name: "branding" },
+        ],
+        description: "Array of tags that the user follows for notifications",
+      },
+      skills: {
+        type: "array",
+        items: { type: "string" },
+        example: [
+          "Graphic Design",
+          "Logo Design",
+          "Brand Identity",
+          "Adobe Creative Suite",
+        ],
+        description: "Array of user skills",
+      },
+      topSpecialities: {
+        type: "array",
+        items: { type: "string" },
+        example: ["Logo Design", "Brand Identity", "Visual Design"],
+        description: "Array of user's top specialities",
+      },
       createdAt: {
         type: "string",
         format: "date-time",

@@ -113,6 +113,19 @@ const User = sequelize.define(
       field: "followed_tags",
       comment: "Array of tag IDs that the user follows for notifications",
     },
+    skills: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [],
+      comment: "Array of user skills",
+    },
+    topSpecialities: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [],
+      field: "top_specialities",
+      comment: "Array of user's top specialities",
+    },
   },
   {
     tableName: "users",

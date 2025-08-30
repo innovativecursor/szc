@@ -51,6 +51,23 @@ const validateUserUpdate = [
     .optional()
     .isBoolean()
     .withMessage("isActive must be a boolean value"),
+  body("skills").optional().isArray().withMessage("Skills must be an array"),
+  body("skills.*")
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Each skill must be between 1 and 100 characters"),
+  body("topSpecialities")
+    .optional()
+    .isArray()
+    .withMessage("Top specialities must be an array"),
+  body("topSpecialities.*")
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage("Each speciality must be between 1 and 100 characters"),
 ];
 
 // Apply authentication middleware to all routes
