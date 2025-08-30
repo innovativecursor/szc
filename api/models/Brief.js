@@ -76,6 +76,12 @@ const Brief = sequelize.define(
       defaultValue: [],
       comment: "Array of tag objects associated with this brief",
     },
+    participants: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [],
+      comment: "Array of user participation objects with user details",
+    },
     isActive: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

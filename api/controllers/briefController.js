@@ -53,9 +53,6 @@ const validateAndUpdateBriefDates = async (briefData, existingBrief = null) => {
     if (submissionDeadline <= today && existingBrief.status === "submission") {
       // Automatically change status to in_review
       await existingBrief.update({ status: "in_review" });
-      console.log(
-        `Brief ${existingBrief.id} status automatically changed from submission to in_review`
-      );
     }
   }
 
@@ -97,6 +94,7 @@ const mapBriefToResponse = (brief) => ({
       }))
     : [],
   files: brief.files || [],
+  participants: brief.participants || [],
 });
 
 // Get all briefs
@@ -363,11 +361,6 @@ const createBriefForBrand = async (req, res) => {
     let briefData = req.body;
     let uploadedFiles = [];
 
-    // Debug logging
-    console.log("=== createBriefForBrand DEBUG ===");
-    console.log("Request body:", JSON.stringify(req.body, null, 2));
-    console.log("Content-Type:", req.headers["content-type"]);
-
     // Validate brand ID format
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -409,10 +402,6 @@ const createBriefForBrand = async (req, res) => {
 
     // Validate required fields according to OpenAPI spec
     if (!briefData || !briefData.title) {
-      console.log("=== VALIDATION DEBUG ===");
-      console.log("briefData:", briefData);
-      console.log("briefData.title:", briefData?.title);
-      console.log("typeof briefData:", typeof briefData);
       return res.status(400).json({
         code: 400,
         message: "Title is required",
@@ -653,15 +642,8 @@ const autoUpdateBriefStatuses = async () => {
     });
 
     if (expiredBriefs.length > 0) {
-      console.log(
-        `Found ${expiredBriefs.length} briefs with expired submission deadlines`
-      );
-
       for (const brief of expiredBriefs) {
         await brief.update({ status: "in_review" });
-        console.log(
-          `Brief ${brief.id} status automatically changed from submission to in_review`
-        );
       }
     }
 

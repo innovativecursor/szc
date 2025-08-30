@@ -1378,7 +1378,7 @@
                       "example": "Brief created successfully"
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Brief"
+                      "$ref": "#/components/schemas/brief"
                     }
                   }
                 }
@@ -1473,7 +1473,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Brief"
+                        "$ref": "#/components/schemas/brief"
                       }
                     }
                   }

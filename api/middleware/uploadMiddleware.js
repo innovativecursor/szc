@@ -1,6 +1,21 @@
 const multer = require("multer");
 const { validateFileType } = require("../services/s3Service");
 
+// Define allowed file types for uploads
+const allowedTypes = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "application/zip",
+  "application/x-zip-compressed",
+];
+
 // Configure multer for memory storage (files will be uploaded to S3)
 const storage = multer.memoryStorage();
 
@@ -8,14 +23,12 @@ const storage = multer.memoryStorage();
 const fileFilter = (req, file, cb) => {
   // Check file type
   if (!allowedTypes.includes(file.mimetype)) {
-    console.log("File type rejected:", file.mimetype);
     return cb(
       new Error(`Invalid file type. Allowed types: ${allowedTypes.join(", ")}`),
       false
     );
   }
 
-  console.log("File type accepted:", file.mimetype);
   // File size validation is handled by multer limits
   cb(null, true);
 };

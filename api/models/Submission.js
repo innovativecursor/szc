@@ -147,7 +147,123 @@ const Submission = sequelize.define(
         name: "unique_user_brief_submission",
       },
     ],
+    hooks: {
+      afterCreate: async (submission, options) => {
+        await updateBriefParticipants(
+          submission.briefId,
+          "add",
+          submission.userId
+        );
+      },
+      afterUpdate: async (submission, options) => {
+        // Always update participants to ensure they're current
+        await updateBriefParticipants(
+          submission.briefId,
+          "add",
+          submission.userId
+        );
+
+        // If user ID changed, also remove from old brief
+        if (submission.changed("userId")) {
+          const previousUserId = submission._previousDataValues?.userId;
+          if (previousUserId) {
+            await updateBriefParticipants(
+              submission._previousDataValues.briefId,
+              "remove",
+              previousUserId
+            );
+          }
+        }
+      },
+      afterDestroy: async (submission, options) => {
+        await updateBriefParticipants(
+          submission.briefId,
+          "remove",
+          submission.userId
+        );
+      },
+    },
   }
 );
+
+// Helper function to update brief participants
+async function updateBriefParticipants(briefId, action, userId) {
+  try {
+    console.log("updateBriefParticipants called:", { briefId, action, userId });
+
+    // Use sequelize.models to avoid circular dependency
+    const sequelize = require("../config/database");
+    const Brief = sequelize.models.Brief;
+    const User = sequelize.models.User;
+
+    // Get the brief
+    const brief = await Brief.findByPk(briefId);
+    if (!brief) {
+      console.log("Brief not found:", briefId);
+      return;
+    }
+    console.log("Found brief:", brief.title);
+
+    // Get user details
+    const user = await User.findByPk(userId, {
+      attributes: ["id", "username", "firstName", "lastName", "email"],
+    });
+    if (!user) {
+      console.log("User not found:", userId);
+      return;
+    }
+    console.log("Found user:", user.username);
+
+    const userParticipation = {
+      userId: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      participatedAt: new Date(),
+    };
+
+    let participants = brief.participants || [];
+    console.log("Current participants:", participants);
+
+    if (action === "add") {
+      // Check if user already exists in participants
+      const existingIndex = participants.findIndex((p) => p.userId === userId);
+      if (existingIndex === -1) {
+        participants.push(userParticipation);
+        console.log("Added user to participants:", user.username);
+      } else {
+        // Update existing participation
+        participants[existingIndex] = userParticipation;
+        console.log("Updated user participation:", user.username);
+      }
+    } else if (action === "remove") {
+      participants = participants.filter((p) => p.userId !== userId);
+      console.log("Removed user from participants:", user.username);
+    }
+
+    console.log("New participants array:", participants);
+
+    // Update the brief using raw SQL to ensure JSON is properly handled
+    await sequelize.query(
+      `
+      UPDATE briefs 
+      SET participants = ? 
+      WHERE id = ?
+    `,
+      {
+        replacements: [JSON.stringify(participants), briefId],
+      }
+    );
+
+    console.log("Updated brief participants:", {
+      action,
+      userId,
+      participantsCount: participants.length,
+    });
+  } catch (error) {
+    console.error("Error updating brief participants:", error);
+  }
+}
 
 module.exports = Submission;

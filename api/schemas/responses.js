@@ -335,6 +335,31 @@ const briefResponses = {
           },
         ],
       },
+      participants: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            userId: { type: "string", format: "uuid" },
+            username: { type: "string" },
+            firstName: { type: "string" },
+            lastName: { type: "string" },
+            email: { type: "string", format: "email" },
+            participatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        example: [
+          {
+            userId: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            username: "john_doe",
+            firstName: "John",
+            lastName: "Doe",
+            email: "john@example.com",
+            participatedAt: "2025-08-26T19:10:04.433Z",
+          },
+        ],
+        description: "Array of users who have participated in this brief",
+      },
       created_at: {
         type: "string",
         format: "date-time",
