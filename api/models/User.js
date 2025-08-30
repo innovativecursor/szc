@@ -127,13 +127,65 @@ const User = sequelize.define(
     ],
     hooks: {
       beforeCreate: async (user) => {
-        if (user.password) {
+        // Hash password if provided and not already hashed
+        if (user.password && !user.password.startsWith("$2a$")) {
           user.password = await bcrypt.hash(user.password, 10);
+        }
+
+        // Super admin constraints
+        if (user.roles === "super_admin") {
+          // Check if super admin already exists
+          const existingSuperAdmin = await sequelize.models.User.findOne({
+            where: { roles: "super_admin" },
+          });
+
+          if (existingSuperAdmin) {
+            throw new Error("Only one super admin can exist in the system");
+          }
+        }
+
+        // Admin verification constraints
+        if (user.roles === "admin") {
+          // Admins must be verified by super admin (except during seeding)
+          if (!user.isVerified && !process.env.SEEDING_SUPER_ADMIN) {
+            throw new Error(
+              "Admin users must be verified by super admin before access"
+            );
+          }
         }
       },
       beforeUpdate: async (user) => {
-        if (user.changed("password") && user.password) {
+        // Hash password if changed and not already hashed
+        if (
+          user.changed("password") &&
+          user.password &&
+          !user.password.startsWith("$2a$")
+        ) {
           user.password = await bcrypt.hash(user.password, 10);
+        }
+
+        // Prevent role changes to super_admin
+        if (user.changed("roles") && user.roles === "super_admin") {
+          const existingSuperAdmin = await sequelize.models.User.findOne({
+            where: {
+              roles: "super_admin",
+              id: { [sequelize.Sequelize.Op.ne]: user.id },
+            },
+          });
+
+          if (existingSuperAdmin) {
+            throw new Error("Only one super admin can exist in the system");
+          }
+        }
+
+        // Prevent admin from being verified by non-super admin
+        if (
+          user.changed("isVerified") &&
+          user.roles === "admin" &&
+          user.isVerified
+        ) {
+          // This will be checked in the controller/middleware
+          // to ensure only super admin can verify admins
         }
       },
     },

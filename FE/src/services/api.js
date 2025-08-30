@@ -72,11 +72,21 @@ export const authAPI = {
     return api.get("/auth/oauth/google/admin", { params: { role } });
   },
   // New Google OAuth endpoint for frontend OAuth
-  authenticateGoogleOAuth: (accessToken, role = "user") => {
-    return api.post("/auth/google", { accessToken, role });
+  authenticateGoogleOAuth: (accessToken) => {
+    return api.post("/auth/google", { accessToken });
   },
   verifyOTP: (otpData) => api.post("/auth/verify-otp", otpData),
   resendOTP: (emailData) => api.post("/auth/resend-otp", emailData),
+};
+
+// Admin API (Super Admin only)
+export const adminAPI = {
+  getPendingApprovals: () => api.get("/admin/pending-approvals"),
+  getAllAdmins: () => api.get("/admin/admins"),
+  approveAdmin: (adminId, data) =>
+    api.patch(`/admin/admins/${adminId}/approve`, data),
+  deactivateAdmin: (adminId) =>
+    api.patch(`/admin/admins/${adminId}/deactivate`),
 };
 
 // Briefs API

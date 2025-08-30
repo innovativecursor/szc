@@ -153,6 +153,16 @@ const loginUser = async (email, password, role = null) => {
       throw new Error("Account is deactivated");
     }
 
+    // Check if admin user is verified by super admin
+    if (user.roles === "admin" && !user.isVerified) {
+      throw new Error("Admin account is pending verification by super admin");
+    }
+
+    // Super admin users don't need verification
+    if (user.roles === "super_admin" && !user.isVerified) {
+      throw new Error("Super admin account is not properly configured");
+    }
+
     // Check if user is OAuth-only (no password)
     if (!user.password) {
       throw new Error(

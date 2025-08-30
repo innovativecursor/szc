@@ -28,6 +28,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { briefsAPI, submissionsAPI, reactionsAPI } from "../services/api";
 import BrandForm from "../components/BrandForm";
 import BriefForm from "../components/BriefForm";
+import SuperAdminDashboard from "../components/SuperAdminDashboard";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -45,6 +46,11 @@ const Dashboard = () => {
   const [brandFormOpen, setBrandFormOpen] = useState(false);
   const [briefFormOpen, setBriefFormOpen] = useState(false);
   const [selectedBrandId, setSelectedBrandId] = useState(null);
+
+  // Show super admin dashboard for super_admin users
+  if (user?.roles === "super_admin") {
+    return <SuperAdminDashboard />;
+  }
 
   useEffect(() => {
     const fetchDashboardData = async () => {

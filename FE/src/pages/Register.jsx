@@ -22,6 +22,7 @@ import {
 import {
   Person as UserIcon,
   AdminPanelSettings as AdminIcon,
+  Security as SuperAdminIcon,
   Email as EmailIcon,
   Check as CheckIcon,
 } from "@mui/icons-material";
@@ -115,13 +116,28 @@ const Register = () => {
 
       if (result.data.success) {
         setRegistrationData(result.data.data);
-        setAlert({
-          show: true,
-          message:
-            "Account created successfully! Please check your email for OTP verification.",
-          severity: "success",
-        });
-        setActiveStep(1);
+
+        // Handle different registration flows based on role
+        if (formData.role === "admin" || formData.role === "super_admin") {
+          setAlert({
+            show: true,
+            message: `${formData.role === "super_admin" ? "Super Admin" : "Admin"} account created successfully! Pending super admin approval.`,
+            severity: "info",
+          });
+          // For admin/super_admin registration, show success message and redirect to login
+          setTimeout(() => {
+            navigate("/login");
+          }, 3000);
+        } else {
+          // For regular users, proceed with OTP verification
+          setAlert({
+            show: true,
+            message:
+              "Account created successfully! Please check your email for OTP verification.",
+            severity: "success",
+          });
+          setActiveStep(1);
+        }
       } else {
         setAlert({
           show: true,
@@ -260,6 +276,18 @@ const Register = () => {
                       </Box>
                     }
                   />
+                  <FormControlLabel
+                    value="super_admin"
+                    control={<Radio />}
+                    label={
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <SuperAdminIcon color="warning" />
+                        <Typography>Super Admin</Typography>
+                      </Box>
+                    }
+                  />
                 </RadioGroup>
               </FormControl>
 
@@ -355,19 +383,21 @@ const Register = () => {
                 >
                   OR
                 </Typography>
-                <GoogleOAuthButton
-                  variant="outlined"
-                  size="large"
-                  fullWidth
-                  role={formData.role}
-                  onError={(errorMessage) => {
-                    setAlert({
-                      show: true,
-                      message: errorMessage,
-                      severity: "error",
-                    });
-                  }}
-                />
+                {formData.role === "user" && (
+                  <GoogleOAuthButton
+                    variant="outlined"
+                    size="large"
+                    fullWidth
+                    role="user"
+                    onError={(errorMessage) => {
+                      setAlert({
+                        show: true,
+                        message: errorMessage,
+                        severity: "error",
+                      });
+                    }}
+                  />
+                )}
               </Box>
             </form>
           </>

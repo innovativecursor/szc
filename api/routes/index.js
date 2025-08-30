@@ -12,6 +12,7 @@ const portfoliosRoutes = require("./portfolios");
 const creativesRoutes = require("./creatives");
 const reactionsRoutes = require("./reactions");
 const usersRoutes = require("./users");
+const adminRoutes = require("./admin");
 
 // API routes
 router.use("/api/auth", authRoutes);
@@ -23,6 +24,7 @@ router.use("/api/portfolios", portfoliosRoutes);
 router.use("/api/creatives", creativesRoutes);
 router.use("/api/reactions", reactionsRoutes);
 router.use("/api/users", usersRoutes);
+router.use("/api/admin", adminRoutes);
 
 // Health check route
 router.get("/health", (req, res) => {

@@ -19,6 +19,7 @@ import {
 import {
   Person as UserIcon,
   AdminPanelSettings as AdminIcon,
+  Security as SuperAdminIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../contexts/AuthContext";
 import GoogleOAuthButton from "../components/GoogleOAuthButton";
@@ -197,6 +198,17 @@ const Login = () => {
                     <Typography>Admin</Typography>
                   </Box>
                 }
+                sx={{ mr: 4 }}
+              />
+              <FormControlLabel
+                value="super_admin"
+                control={<Radio />}
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <SuperAdminIcon color="error" />
+                    <Typography>Super Admin</Typography>
+                  </Box>
+                }
               />
             </RadioGroup>
             {errors.role && (
@@ -223,27 +235,31 @@ const Login = () => {
             </Button>
           </Box>
 
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              OR
-            </Typography>
-          </Divider>
+          {formData.role === "user" && (
+            <>
+              <Divider sx={{ my: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                  OR
+                </Typography>
+              </Divider>
 
-          <Box sx={{ textAlign: "center", mb: 3 }}>
-            <GoogleOAuthButton
-              variant="outlined"
-              size="large"
-              fullWidth
-              role={formData.role}
-              onError={(errorMessage) => {
-                setAlert({
-                  show: true,
-                  message: errorMessage,
-                  severity: "error",
-                });
-              }}
-            />
-          </Box>
+              <Box sx={{ textAlign: "center", mb: 3 }}>
+                <GoogleOAuthButton
+                  variant="outlined"
+                  size="large"
+                  fullWidth
+                  role="user"
+                  onError={(errorMessage) => {
+                    setAlert({
+                      show: true,
+                      message: errorMessage,
+                      severity: "error",
+                    });
+                  }}
+                />
+              </Box>
+            </>
+          )}
 
           <Divider sx={{ my: 3 }}>
             <Typography variant="body2" color="text.secondary">

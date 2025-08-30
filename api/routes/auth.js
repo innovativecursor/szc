@@ -93,41 +93,69 @@ router.post("/register", validateRegistration, async (req, res) => {
       lastName: req.body.lastName,
       displayName: `${req.body.firstName} ${req.body.lastName}`,
       roles: req.body.role, // Role is now mandatory
-      isVerified: false, // Users need to verify their email
+      isVerified: req.body.role === "user" ? false : false, // Admins start unverified
       isActive: true,
     };
 
     const user = await registerUser(userData);
 
-    // Generate JWT token for immediate login
-    const token = generateToken(
-      {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        roles: user.roles,
-      },
-      "1h"
-    );
+    // Generate JWT token for immediate login (only for regular users)
+    let token = null;
+    let expiresAt = null;
 
-    res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      data: {
-        user: {
+    if (req.body.role === "user") {
+      token = generateToken(
+        {
           id: user.id,
-          username: user.username,
           email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          displayName: user.displayName,
+          username: user.username,
           roles: user.roles,
-          isVerified: user.isVerified,
         },
-        token,
-        expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
-      },
-    });
+        "1h"
+      );
+      expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
+    }
+
+    // Different response for admin vs user registration
+    if (req.body.role === "admin" || req.body.role === "super_admin") {
+      res.status(201).json({
+        success: true,
+        message: `${req.body.role === "super_admin" ? "Super Admin" : "Admin"} account created successfully. Pending super admin approval.`,
+        data: {
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            displayName: user.displayName,
+            roles: user.roles,
+            isVerified: user.isVerified,
+            message:
+              "Your account is pending verification by super admin. You will be notified once approved.",
+          },
+        },
+      });
+    } else {
+      res.status(201).json({
+        success: true,
+        message: "User registered successfully",
+        data: {
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            displayName: user.displayName,
+            roles: user.roles,
+            isVerified: user.isVerified,
+          },
+          token,
+          expiresAt,
+        },
+      });
+    }
   } catch (error) {
     console.error("Registration error:", error);
 
@@ -161,6 +189,7 @@ router.post("/login", validateLogin, async (req, res) => {
     }
 
     const { email, password, role } = req.body;
+
     const result = await loginUser(email, password, role);
 
     res.json({
@@ -286,7 +315,7 @@ router.get("/callback", (req, res) => {
 // Google OAuth Authentication (for frontend Google OAuth)
 router.post("/google", async (req, res) => {
   try {
-    const { accessToken, role = "user" } = req.body;
+    const { accessToken } = req.body;
 
     if (!accessToken) {
       return res.status(400).json({
@@ -295,6 +324,9 @@ router.post("/google", async (req, res) => {
         error: "MISSING_ACCESS_TOKEN",
       });
     }
+
+    // Google OAuth is only for regular users
+    const role = "user";
 
     // Get user info from Google using the access token
     const userInfoResponse = await axios.get(
@@ -322,6 +354,16 @@ router.post("/google", async (req, res) => {
     });
 
     if (user) {
+      // Check if existing user is admin or super admin
+      if (user.roles !== "user") {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Google OAuth is only available for regular users. Admin and super admin accounts must use traditional login.",
+          error: "OAUTH_NOT_ALLOWED_FOR_ADMIN",
+        });
+      }
+
       // Update existing user's Google info
       await user.update({
         lastLogin: new Date(),
@@ -330,7 +372,7 @@ router.post("/google", async (req, res) => {
         displayName: googleUserInfo.name,
       });
     } else {
-      // Create new user
+      // Create new user - always as regular user
       const username = generateUsername(googleUserInfo.email);
 
       user = await User.create({
@@ -343,7 +385,7 @@ router.post("/google", async (req, res) => {
         googleId: googleUserInfo.sub,
         isVerified: true, // Google users are pre-verified
         isActive: true,
-        roles: role,
+        roles: "user", // Always create as regular user
         password: null, // OAuth users don't need password
       });
     }

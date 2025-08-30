@@ -16,7 +16,6 @@ const GoogleOAuthButton = ({
   variant = "outlined",
   size = "large",
   fullWidth = false,
-  role = null,
   onError,
 }) => {
   const [loading, setLoading] = useState(false);
@@ -31,10 +30,9 @@ const GoogleOAuthButton = ({
       setError("");
 
       try {
-        // Send access token to backend for authentication
+        // Google OAuth is only for regular users
         const response = await authAPI.authenticateGoogleOAuth(
-          tokenResponse.access_token,
-          role || "user"
+          tokenResponse.access_token
         );
 
         if (response.data.success) {
@@ -112,20 +110,10 @@ const GoogleOAuthButton = ({
           },
         }}
       >
-        {loading
-          ? "Signing in..."
-          : `Continue with Google${role ? ` (${role})` : ""}`}
+        {loading ? "Signing in..." : `Continue with Google`}
       </Button>
 
-      {role && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ mt: 1, display: "block", textAlign: "center" }}
-        >
-          Signing in as: {role}
-        </Typography>
-      )}
+      {/* Removed role display as per edit hint */}
     </Box>
   );
 };
