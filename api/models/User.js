@@ -144,15 +144,8 @@ const User = sequelize.define(
           }
         }
 
-        // Admin verification constraints
-        if (user.roles === "admin") {
-          // Admins must be verified by super admin (except during seeding)
-          if (!user.isVerified && !process.env.SEEDING_SUPER_ADMIN) {
-            throw new Error(
-              "Admin users must be verified by super admin before access"
-            );
-          }
-        }
+        // Note: Admin verification is checked during login, not during creation
+        // This allows admins to register but prevents them from logging in until verified
       },
       beforeUpdate: async (user) => {
         // Hash password if changed and not already hashed
